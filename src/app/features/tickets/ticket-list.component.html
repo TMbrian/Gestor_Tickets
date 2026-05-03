@@ -1,0 +1,265 @@
+<div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary-subtle">
+  <div>
+    <h2 class="fw-bold mb-1 text-body-emphasis">Histórico de Tickets</h2>
+    <p class="text-muted mb-0">Gestión estilo Excel y persistencia local (Offline)</p>
+  </div>
+  <div class="d-flex gap-2">
+    <input type="file" id="fileImport" class="d-none" (change)="onFileChange($event)" accept=".xlsx, .xls">
+    <button class="btn btn-outline-secondary fw-semibold shadow-sm rounded-pill" *ngIf="auth.isAdmin" onclick="document.getElementById('fileImport').click()">
+      <i class="bi bi-upload me-1"></i> Importar Excel
+    </button>
+    
+    <div class="dropdown">
+      <button class="btn btn-outline-success border-2 fw-semibold shadow-sm dropdown-toggle rounded-pill" type="button" data-bs-toggle="dropdown">
+        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Exportar
+      </button>
+      <ul class="dropdown-menu shadow-lg border-0 rounded-3">
+        <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" (click)="exportExcel()"><i class="bi bi-file-excel text-success me-2"></i>Exportar a XLSX</a></li>
+        <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" (click)="exportCSV()"><i class="bi bi-file-earmark-text text-secondary me-2"></i>Exportar a CSV</a></li>
+      </ul>
+    </div>
+
+    <button class="btn btn-primary fw-bold px-4 shadow-sm rounded-pill ms-1" *ngIf="auth.isAdmin" (click)="openModal()">
+      <i class="bi bi-plus-lg me-1"></i> Nuevo Ticket
+    </button>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 mb-4">
+  <div class="card-body p-4 p-md-5">
+    <div class="row mb-4 g-3 align-items-center">
+      <div class="col-md-6 col-lg-4">
+        <div class="input-group flex-nowrap rounded-3 overflow-hidden border">
+          <span class="input-group-text bg-body-tertiary border-0"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" class="form-control border-0 bg-body-tertiary" placeholder="Buscar en todas las columnas..." [(ngModel)]="searchText" (ngModelChange)="applyFilters()">
+        </div>
+      </div>
+      <div class="col-md-3 ms-auto">
+        <select class="form-select bg-body-tertiary border text-secondary fw-medium rounded-3" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
+          <option value="">Todos los Estados</option>
+          <option value="Abierto">Abierto</option>
+          <option value="En Progreso">En Progreso</option>
+          <option value="Cerrado">Cerrado</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-responsive rounded-3 border shadow-sm custom-scrollbar">
+      <table class="table table-hover table-striped align-middle mb-0" style="white-space: nowrap;">
+        <thead class="table-dark sticky-top">
+          <tr>
+            <th class="ps-3 py-3 font-monospace">TICKET</th>
+            <th class="py-3 font-monospace">SEMANA</th>
+            <th class="py-3 font-monospace">ASIGNACIÓN</th>
+            <th class="py-3 font-monospace">CIERRE</th>
+            <th class="py-3 font-monospace">TIEMPO (HRS)</th>
+            <th class="py-3 font-monospace">CEDI / SITIO</th>
+            <th class="py-3 font-monospace">ÁREA AFECTADA</th>
+            <th class="py-3 font-monospace">ESTADO</th>
+            <th *ngIf="auth.isAdmin" class="text-end pe-3 py-3 font-monospace">ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody class="border-top-0">
+          <tr *ngFor="let t of filteredTickets" (dblclick)="auth.isAdmin && openModal(t)" style="cursor: pointer;" [ngClass]="{'opacity-75': t.status === 'Cerrado'}">
+            <td class="ps-3 text-primary fw-bold font-monospace">{{ t.ticketNumber }}</td>
+            <td><span class="badge bg-secondary-subtle text-secondary border">W{{ t.week }}</span></td>
+            <td>
+              <div class="fw-medium text-body-emphasis">{{ t.assignmentDate }}</div>
+              <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ t.assignmentTime }}</small>
+            </td>
+            <td>
+              <div class="fw-medium text-body-emphasis" *ngIf="t.closeDate">{{ t.closeDate }}</div>
+              <small class="text-muted" *ngIf="t.closeTime"><i class="bi bi-clock me-1"></i>{{ t.closeTime }}</small>
+              <span class="badge bg-body-secondary text-secondary border" *ngIf="!t.closeDate">En proceso</span>
+            </td>
+            <td>
+              <span class="badge px-3 py-2" [ngClass]="{'bg-success-subtle text-success border border-success': t.solutionTimeMins !== undefined, 'bg-warning-subtle text-warning border border-warning': t.solutionTimeMins === undefined}">
+                {{ t.solutionTimeMins !== undefined ? (t.solutionTimeMins / 60).toFixed(1) + 'h' : '--' }}
+              </span>
+            </td>
+            <td class="fw-medium">{{ t.site }}</td>
+            <td class="text-secondary">{{ t.affectedArea }}</td>
+            <td>
+              <span class="badge px-3 py-2 rounded-pill shadow-sm" [ngClass]="{
+                 'bg-danger': t.status === 'Abierto',
+                 'bg-warning text-dark': t.status === 'En Progreso',
+                 'bg-success': t.status === 'Cerrado'
+              }">{{ t.status }}</span>
+            </td>
+            <td *ngIf="auth.isAdmin" class="text-end pe-3">
+              <button class="btn btn-sm btn-light border shadow-sm me-2 text-primary rounded-circle" (click)="openModal(t)" title="Editar"><i class="bi bi-pencil-square"></i></button>
+              <button class="btn btn-sm btn-light border shadow-sm text-danger rounded-circle" (click)="deleteTicket(t.id)" title="Eliminar"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+          <tr *ngIf="filteredTickets.length === 0">
+            <td [attr.colspan]="auth.isAdmin ? 9 : 8" class="text-center py-5 text-muted">
+              <i class="bi bi-folder2-open fs-1 d-block mb-3 opacity-50"></i>
+              <h5 class="fw-bold">No se encontraron tickets</h5>
+              <p class="mb-0">Ajusta los filtros de búsqueda o importa un archivo Excel.</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-between mt-4 text-muted small fw-medium">
+      <div>Mostrando {{ filteredTickets.length }} tickets generados localmente.</div>
+      <div *ngIf="auth.isAdmin"><i class="bi bi-mouse me-1"></i> Doble click en una fila para editar</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Formulario -->
+<div class="modal fade" #ticketModal tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-primary bg-gradient text-white px-4 py-3 border-bottom-0">
+        <h4 class="modal-title fw-bold mb-0">
+          <i class="bi" [ngClass]="isEditing ? 'bi-pencil-square me-2' : 'bi-plus-circle me-2'"></i> 
+          {{ isEditing ? 'Modificar Ticket: ' + ticketForm.get('ticketNumber')?.value : 'Crear Nuevo Ticket' }}
+        </h4>
+        <button type="button" class="btn-close btn-close-white shadow-sm" (click)="closeModal()"></button>
+      </div>
+      
+      <div class="modal-body p-4 bg-body-tertiary">
+        <form [formGroup]="ticketForm" (ngSubmit)="saveTicket()">
+          <div class="accordion" id="ticketAccordion">
+            
+            <!-- SECCION 1 -->
+            <div class="accordion-item border-0 shadow-sm rounded-4 mb-3 overflow-hidden">
+              <h2 class="accordion-header">
+                <button class="accordion-button rounded-4 text-secondary fw-bold text-uppercase shadow-none border" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true">
+                  <i class="bi bi-info-circle me-2"></i>Información Principal
+                </button>
+              </h2>
+              <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#ticketAccordion">
+                <div class="accordion-body bg-body p-4 pt-3 border rounded-bottom-4 border-top-0">
+                  <div class="row g-3">
+                     <div class="col-md-3">
+                        <label class="form-label fw-semibold">Número de Ticket*</label>
+                        <input type="text" class="form-control bg-body" formControlName="ticketNumber" placeholder="Solo números" 
+                               [ngClass]="{'is-invalid': ticketForm.get('ticketNumber')?.touched && ticketForm.get('ticketNumber')?.invalid}">
+                        <div class="invalid-feedback">Solo se permiten números.</div>
+                     </div>
+                     <div class="col-md-3">
+                        <label class="form-label fw-semibold">Semana*</label>
+                        <input type="number" class="form-control bg-body" formControlName="week" readonly>
+                     </div>
+                     <div class="col-md-3">
+                        <label class="form-label fw-semibold">Fecha de Asignación*</label>
+                        <input type="date" class="form-control bg-body" formControlName="assignmentDate">
+                     </div>
+                     <div class="col-md-3">
+                        <label class="form-label fw-semibold">Hora de Asignación*</label>
+                        <input type="time" class="form-control bg-body" formControlName="assignmentTime">
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECCION 2 -->
+            <div class="accordion-item border-0 shadow-sm rounded-4 mb-3 overflow-hidden">
+              <h2 class="accordion-header">
+                <button class="accordion-button rounded-4 collapsed text-secondary fw-bold text-uppercase shadow-none border" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false">
+                  <i class="bi bi-check-circle me-2"></i>Solución (Cierre del Ticket)
+                </button>
+              </h2>
+              <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#ticketAccordion">
+                <div class="accordion-body bg-body p-4 pt-3 border rounded-bottom-4 border-top-0">
+                  <div class="row g-3">
+                     <div class="col-md-6">
+                        <label class="form-label fw-semibold">Fecha de Cierre</label>
+                        <input type="date" class="form-control bg-body" formControlName="closeDate">
+                     </div>
+                     <div class="col-md-6">
+                        <label class="form-label fw-semibold">Hora de Cierre</label>
+                        <input type="time" class="form-control bg-body" formControlName="closeTime">
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECCION 3 -->
+            <div class="accordion-item border-0 shadow-sm rounded-4 mb-3 overflow-hidden">
+              <h2 class="accordion-header">
+                <button class="accordion-button rounded-4 collapsed text-secondary fw-bold text-uppercase shadow-none border" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false">
+                  <i class="bi bi-geo-alt me-2"></i>Detalles y Clasificación
+                </button>
+              </h2>
+              <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#ticketAccordion">
+                <div class="accordion-body bg-body p-4 pt-3 border rounded-bottom-4 border-top-0">
+                  <div class="row g-3 align-items-center">
+                     <div class="col-md-6">
+                        <label class="form-label fw-semibold">CEDI / Sitio*</label>
+                        <input type="text" class="form-control bg-body" formControlName="site" placeholder="Ruta o Ciudad">
+                     </div>
+                     <div class="col-md-6">
+                        <label class="form-label fw-semibold">Área Afectada*</label>
+                        <input type="text" class="form-control bg-body" formControlName="affectedArea" placeholder="Ej: Operaciones, Redes, etc.">
+                     </div>
+        
+                     <div class="col-md-12">
+                        <label class="form-label fw-semibold">Descripción del Problema*</label>
+                        <textarea class="form-control bg-body" rows="3" formControlName="description" placeholder="Detalla el problema exhaustivamente..."></textarea>
+                     </div>
+        
+                     <div class="col-12 pt-2 mb-2">
+                        <label class="form-label fw-semibold d-block mb-3">Estado de Proceso*</label>
+                        <div class="btn-group w-100 shadow-sm d-flex" role="group">
+                          <input type="radio" class="btn-check" formControlName="status" value="Abierto" id="btnradio1">
+                          <label class="btn btn-outline-danger flex-fill" for="btnradio1">Abierto</label>
+        
+                          <input type="radio" class="btn-check" formControlName="status" value="En Progreso" id="btnradio2">
+                          <label class="btn btn-outline-warning flex-fill" for="btnradio2">En Progreso</label>
+        
+                          <input type="radio" class="btn-check" formControlName="status" value="Cerrado" id="btnradio3">
+                          <label class="btn btn-outline-success flex-fill" for="btnradio3">Cerrado</label>
+                        </div>
+                     </div>
+        
+                     <div class="col-md-6 pt-2">
+                        <label class="form-label fw-semibold mb-3">Ticket Asignado Oficialmente</label>
+                        <div class="d-flex align-items-center rounded bg-body p-2 border h-100" style="max-height: 48px;">
+                          <input class="form-check-input ms-0 me-3 mt-0 fs-4" type="checkbox" role="switch" formControlName="isAssigned">
+                          <label class="form-check-label fw-medium mt-1 text-truncate">Marcar como SI asignado</label>
+                        </div>
+                     </div>
+        
+                     <div class="col-md-6 pt-2">
+                        <label class="form-label fw-semibold text-danger mb-3">RFC Emergente (Registro)</label>
+                        <div class="d-flex align-items-center rounded bg-danger bg-opacity-10 p-2 border border-danger h-100" style="max-height: 48px;">
+                          <input class="form-check-input ms-0 me-3 mt-0 fs-4" type="checkbox" role="switch" formControlName="isRfc">
+                          <label class="form-check-label fw-bold text-danger mt-1 text-truncate">Habilitar RFC Emergente</label>
+                        </div>
+                     </div>
+        
+                     <div class="col-md-12 pt-2" *ngIf="ticketForm.get('isRfc')?.value">
+                        <div class="alert alert-danger d-flex align-items-center mb-0 shadow-sm p-3 border-0 rounded-3">
+                           <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+                           <div class="flex-grow-1">
+                             <label class="form-label fw-bold mb-1">Número de Autorización RFC</label>
+                             <input type="text" class="form-control font-monospace border-0 shadow-sm" formControlName="rfcNumber" placeholder="EJ-RFC-123445">
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            
+          </div>
+
+          <div class="d-flex justify-content-between mt-4">
+             <button type="button" class="btn btn-outline-secondary fw-bold px-4 rounded-pill shadow-sm" (click)="closeModal()">Cancelar</button>
+             <button type="button" class="btn btn-primary fw-bold px-5 py-2 shadow rounded-pill d-inline-flex align-items-center justify-content-center gap-2" [disabled]="ticketForm.invalid" (click)="saveTicket()">
+               <i class="bi bi-cloud-arrow-up-fill fs-5"></i> <span>{{ isEditing ? 'Confirmar y Actualizar' : 'Guardar y Finalizar' }}</span>
+             </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
