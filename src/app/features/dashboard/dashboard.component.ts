@@ -13,11 +13,26 @@ import Chart from 'chart.js/auto';
     <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary-subtle">
       <div>
         <h2 class="fw-bold mb-1 text-body-emphasis">Dashboard</h2>
-        <p class="text-muted mb-0">Resumen y métricas de soporte técnico</p>
+        <p class="text-muted mb-0">Semana {{currentWeek}}, {{currentYear}}</p>
       </div>
-      <button class="btn btn-outline-primary px-4 py-2 fw-semibold rounded-pill shadow-sm" (click)="loadStats()">
-        <i class="bi bi-arrow-clockwise me-2"></i> Actualizar
-      </button>
+      
+      <div class="d-flex align-items-center gap-2">
+        <div class="btn-group shadow-sm me-3">
+          <button class="btn btn-outline-secondary px-3 py-2" (click)="changeWeek(-1)" title="Semana Anterior">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <button class="btn btn-outline-secondary px-4 py-2 fw-bold bg-body" style="min-width: 150px;">
+            Semana {{currentWeek}}
+          </button>
+          <button class="btn btn-outline-secondary px-3 py-2" (click)="changeWeek(1)" title="Semana Siguiente">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+        
+        <button class="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm" (click)="loadStats()">
+          <i class="bi bi-arrow-clockwise me-2"></i> Actualizar
+        </button>
+      </div>
     </div>
 
     <div class="row g-4 mb-4" *ngIf="stats">
@@ -128,21 +143,57 @@ export class DashboardComponent implements OnInit {
   chart: any = null;
   statusChart: any = null;
   recentTickets: any[] = [];
+  
+  currentWeek: number = 1;
+  currentYear: number = new Date().getFullYear();
 
   constructor(private ticketService: TicketService) {}
 
   ngOnInit() {
+    const now = new Date();
+    const iso = this.calculateISOWeek(now);
+    this.currentWeek = iso.week;
+    this.currentYear = iso.year;
     this.loadStats();
   }
 
   async loadStats() {
-    this.stats = await this.ticketService.getStatistics();
+    this.stats = await this.ticketService.getStatistics(this.currentWeek, this.currentYear);
     const all = await this.ticketService.getTickets();
     
     // Determine recent tickets (sort by createdAt or id descending)
     this.recentTickets = [...all].sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
 
     this.renderChart(all);
+  }
+
+  changeWeek(delta: number) {
+    let date = this.getDateFromWeek(this.currentWeek, this.currentYear);
+    date.setDate(date.getDate() + (delta * 7));
+    const iso = this.calculateISOWeek(date);
+    this.currentWeek = iso.week;
+    this.currentYear = iso.year;
+    this.loadStats();
+  }
+
+  private calculateISOWeek(date: Date): { week: number, year: number } {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return { week, year: d.getUTCFullYear() };
+  }
+
+  private getDateFromWeek(week: number, year: number): Date {
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dow = simple.getDay();
+    const isoWeekStart = simple;
+    if (dow <= 4)
+      isoWeekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    else
+      isoWeekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    return isoWeekStart;
   }
 
   renderChart(tickets: any[]) {

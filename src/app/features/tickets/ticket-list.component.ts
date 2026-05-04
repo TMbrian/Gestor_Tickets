@@ -26,6 +26,9 @@ export class TicketListComponent implements OnInit {
   isEditing = false;
   currentEditId?: number;
 
+  selectedWeek: number = 1;
+  currentWeek: number = 1;
+
   @ViewChild('ticketModal') ticketModalRef!: ElementRef;
   modalInstance: any;
 
@@ -39,7 +42,36 @@ export class TicketListComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.currentWeek = this.calculateISOWeek(new Date());
+    this.selectedWeek = this.currentWeek;
     this.loadTickets();
+  }
+
+  calculateISOWeek(d: Date): number {
+    const date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  }
+
+  previousWeek() {
+    if (this.selectedWeek > 1) {
+      this.selectedWeek--;
+      this.applyFilters();
+    }
+  }
+
+  nextWeek() {
+    if (this.selectedWeek < 53) {
+      this.selectedWeek++;
+      this.applyFilters();
+    }
+  }
+
+  goToCurrentWeek() {
+    this.selectedWeek = this.currentWeek;
+    this.applyFilters();
   }
 
   initForm() {
@@ -63,11 +95,7 @@ export class TicketListComponent implements OnInit {
       if (val) {
         const d = new Date(val);
         if (!isNaN(d.getTime())) {
-          const date = new Date(d.getTime());
-          date.setHours(0, 0, 0, 0);
-          date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-          const week1 = new Date(date.getFullYear(), 0, 4);
-          const week = 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+          const week = this.calculateISOWeek(d);
           this.ticketForm.patchValue({ week }, { emitEvent: false });
         }
       }
@@ -85,7 +113,8 @@ export class TicketListComponent implements OnInit {
         val !== undefined && val !== null && String(val).toLowerCase().includes(this.searchText.toLowerCase())
       );
       const matchStatus = this.statusFilter ? t.status === this.statusFilter : true;
-      return matchSearch && matchStatus;
+      const matchWeek = t.week === this.selectedWeek;
+      return matchSearch && matchStatus && matchWeek;
     });
   }
 

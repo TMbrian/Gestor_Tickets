@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SidebarComponent } from './sidebar.component';
 import { NavbarComponent } from './navbar.component';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog.component';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, SidebarComponent, NavbarComponent],
+  imports: [CommonModule, RouterModule, SidebarComponent, NavbarComponent, ConfirmDialogComponent],
   template: `
     <div class="d-flex w-100 custom-vh-100 overflow-hidden bg-body-tertiary">
       <app-sidebar [isCollapsed]="isCollapsed" class="flex-shrink-0 z-2" style="transition: width 0.3s ease;" [style.width]="isCollapsed ? '88px' : '280px'"></app-sidebar>
@@ -20,6 +21,9 @@ import { NavbarComponent } from './navbar.component';
         </main>
       </div>
     </div>
+    
+    <!-- Global UI Elements -->
+    <app-confirm-dialog></app-confirm-dialog>
   `,
   styles: [`
     .custom-vh-100 { height: 100vh; }

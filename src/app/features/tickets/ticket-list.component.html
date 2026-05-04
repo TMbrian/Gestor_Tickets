@@ -28,10 +28,27 @@
 <div class="card shadow-sm border-0 rounded-4 mb-4">
   <div class="card-body p-4 p-md-5">
     <div class="row mb-4 g-3 align-items-center">
-      <div class="col-md-6 col-lg-4">
+      <div class="col-md-4">
         <div class="input-group flex-nowrap rounded-3 overflow-hidden border">
           <span class="input-group-text bg-body-tertiary border-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" class="form-control border-0 bg-body-tertiary" placeholder="Buscar en todas las columnas..." [(ngModel)]="searchText" (ngModelChange)="applyFilters()">
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex align-items-center justify-content-center bg-body-tertiary border rounded-3 p-1 shadow-sm">
+          <button class="btn btn-sm btn-light border-0 rounded-2" (click)="previousWeek()" title="Semana Anterior">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <div class="flex-grow-1 text-center px-2">
+            <span class="fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Semana {{ selectedWeek }}</span>
+            <span *ngIf="selectedWeek === currentWeek" class="badge bg-primary ms-2" style="font-size: 0.6rem;">ACTUAL</span>
+          </div>
+          <button class="btn btn-sm btn-light border-0 rounded-2" (click)="nextWeek()" title="Semana Siguiente">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          <button *ngIf="selectedWeek !== currentWeek" class="btn btn-sm btn-link text-decoration-none fw-bold p-1 ms-1" (click)="goToCurrentWeek()" style="font-size: 0.75rem;">
+            Hoy
+          </button>
         </div>
       </div>
       <div class="col-md-3 ms-auto">
@@ -146,11 +163,11 @@
                      </div>
                      <div class="col-md-3">
                         <label class="form-label fw-semibold">Fecha de Asignación*</label>
-                        <input type="date" class="form-control bg-body" formControlName="assignmentDate">
+                        <input type="date" class="form-control bg-body" formControlName="assignmentDate" (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()" (paste)="$event.preventDefault()">
                      </div>
                      <div class="col-md-3">
                         <label class="form-label fw-semibold">Hora de Asignación*</label>
-                        <input type="time" class="form-control bg-body" formControlName="assignmentTime">
+                        <input type="time" class="form-control bg-body" formControlName="assignmentTime" (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()" (paste)="$event.preventDefault()">
                      </div>
                   </div>
                 </div>
@@ -169,11 +186,11 @@
                   <div class="row g-3">
                      <div class="col-md-6">
                         <label class="form-label fw-semibold">Fecha de Cierre</label>
-                        <input type="date" class="form-control bg-body" formControlName="closeDate">
+                        <input type="date" class="form-control bg-body" formControlName="closeDate" (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()" (paste)="$event.preventDefault()">
                      </div>
                      <div class="col-md-6">
                         <label class="form-label fw-semibold">Hora de Cierre</label>
-                        <input type="time" class="form-control bg-body" formControlName="closeTime">
+                        <input type="time" class="form-control bg-body" formControlName="closeTime" (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()" (paste)="$event.preventDefault()">
                      </div>
                   </div>
                 </div>

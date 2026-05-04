@@ -63,10 +63,30 @@ export class TicketService {
     return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
   }
 
-  async getStatistics(): Promise<TicketStatistics> {
+  async getStatistics(week?: number, year?: number): Promise<TicketStatistics> {
     const all = await this.getTickets();
+    let filtered = all;
+
+    if (week !== undefined && year !== undefined) {
+      filtered = all.filter(t => {
+        if (!t.assignmentDate) return false;
+        const d = new Date(t.assignmentDate);
+        if (isNaN(d.getTime())) return false;
+        
+        // Use same ISO week logic as TicketListComponent
+        const date = new Date(d.getTime());
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const week1 = new Date(date.getFullYear(), 0, 4);
+        const isoWeek = 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        const isoYear = date.getFullYear();
+        
+        return isoWeek === week && isoYear === year;
+      });
+    }
+
     const stats: TicketStatistics = {
-      total: all.length,
+      total: filtered.length,
       byStatus: { 'Abierto': 0, 'En Progreso': 0, 'Cerrado': 0 },
       averageSolutionTimeMins: 0
     };
@@ -74,14 +94,14 @@ export class TicketService {
     let totalSolutionMins = 0;
     let closedCountWithTime = 0;
 
-    all.forEach(t => {
+    filtered.forEach(t => {
       if (stats.byStatus[t.status] !== undefined) {
         stats.byStatus[t.status]! += 1;
       } else {
         stats.byStatus[t.status] = 1;
       }
 
-      if (t.solutionTimeMins !== undefined) {
+      if (t.status === 'Cerrado' && t.solutionTimeMins !== undefined) {
         totalSolutionMins += t.solutionTimeMins;
         closedCountWithTime++;
       }
