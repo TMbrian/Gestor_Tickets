@@ -38,7 +38,10 @@ export class TicketService {
     ticket.solutionTimeMins = this.calculateSolutionTime(ticket);
     ticket.createdAt = Date.now();
     ticket.updatedAt = Date.now();
-    const docRef = await addDoc(this.ticketsCollection, ticket);
+    
+    // Clean undefined values for Firestore
+    const data = JSON.parse(JSON.stringify(ticket, (k, v) => v === undefined ? null : v));
+    const docRef = await addDoc(this.ticketsCollection, data);
     return docRef.id;
   }
 
@@ -52,7 +55,8 @@ export class TicketService {
       }
     }
     const docRef = doc(this.firestore, `tickets/${id}`);
-    return updateDoc(docRef, changes as any);
+    const data = JSON.parse(JSON.stringify(changes, (k, v) => v === undefined ? null : v));
+    return updateDoc(docRef, data);
   }
 
   async deleteTicket(id: string): Promise<void> {
@@ -60,15 +64,15 @@ export class TicketService {
     return deleteDoc(docRef);
   }
 
-  calculateSolutionTime(ticket: Ticket): number | undefined {
+  calculateSolutionTime(ticket: Ticket): number | null {
     if (!ticket.closeDate || !ticket.closeTime || !ticket.assignmentDate || !ticket.assignmentTime) {
-      return undefined;
+      return null;
     }
     const startStr = `${ticket.assignmentDate}T${ticket.assignmentTime}`;
     const endStr = `${ticket.closeDate}T${ticket.closeTime}`;
     const start = new Date(startStr);
     const end = new Date(endStr);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) return undefined;
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
     return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
   }
 
@@ -106,7 +110,7 @@ export class TicketService {
       } else {
         stats.byStatus[t.status] = 1;
       }
-      if (t.status === 'Cerrado' && t.solutionTimeMins !== undefined) {
+      if (t.status === 'Cerrado' && t.solutionTimeMins !== null && t.solutionTimeMins !== undefined) {
         totalSolutionMins += t.solutionTimeMins;
         closedCountWithTime++;
       }
@@ -171,40 +175,51 @@ export class TicketService {
       reader.onload = async (e) => {
         try {
           const data = new Uint8Array((e.target as any).result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+          const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
           let addedCount = 0;
           for (const row of jsonData) {
-            const ticketNumber = row['Número de Ticket'] || row['NÚMERO DE TICKET'] || row['ticketNumber'];
+            // Flexible header detection
+            const getVal = (keys: string[]) => {
+              const foundKey = Object.keys(row).find(k => keys.includes(k.trim().toLowerCase()) || keys.includes(k.trim()));
+              return foundKey ? row[foundKey] : null;
+            };
+
+            const ticketNumber = getVal(['número de ticket', 'numero de ticket', 'ticket', 'id', 'ticketnumber']);
             if (!ticketNumber) continue;
 
             const t: Ticket = {
               ticketNumber: String(ticketNumber).trim(),
               userId: this.userId,
-              week: Number(row['Semana'] || row['SEMANA'] || row['week'] || 1),
-              assignmentDate: row['Fecha Asignación'] || row['assignmentDate'] || new Date().toISOString().split('T')[0],
-              assignmentTime: row['Hora Asignación'] || row['assignmentTime'] || '12:00',
-              site: row['Sitio/CEDI'] || row['SITIO'] || row['site'] || 'N/A',
-              affectedArea: row['Área Afectada'] || row['ÁREA AFECTADA'] || row['affectedArea'] || 'N/A',
-              description: row['Descripción'] || row['DESCRIPCIÓN'] || row['description'] || '-',
-              status: (row['Estado'] || row['ESTADO'] || row['status'] || 'Abierto') as TicketStatus,
-              isAssigned: String(row['Asignado Oficialmente']).toUpperCase() === 'SI' || row['isAssigned'] === true,
-              isRfc: String(row['Emergente RFC']).toUpperCase() === 'SI' || row['isRfc'] === true,
-              rfcNumber: row['Número RFC'] || row['rfcNumber'],
-              closeDate: row['Fecha Cierre'] || row['closeDate'],
-              closeTime: row['Hora Cierre'] || row['closeTime'],
+              week: Number(getVal(['semana', 'week']) || 1),
+              assignmentDate: getVal(['fecha asignación', 'fecha asignacion', 'fecha', 'assignmentdate']) || new Date().toISOString().split('T')[0],
+              assignmentTime: getVal(['hora asignación', 'hora asignacion', 'hora', 'assignmenttime']) || '08:00',
+              site: getVal(['sitio/cedi', 'sitio', 'cedi', 'site']) || 'N/A',
+              affectedArea: getVal(['área afectada', 'area afectada', 'área', 'area', 'affectedarea']) || 'N/A',
+              description: getVal(['descripción', 'descripcion', 'description']) || '-',
+              status: (getVal(['estado', 'status']) || 'Abierto') as TicketStatus,
+              isAssigned: String(getVal(['asignado oficialmente', 'asignado', 'isassigned'])).toUpperCase().includes('SI') || getVal(['isassigned']) === true,
+              isRfc: String(getVal(['emergente rfc', 'rfc', 'isrfc'])).toUpperCase().includes('SI') || getVal(['isrfc']) === true,
+              rfcNumber: getVal(['número rfc', 'numero rfc', 'rfcnumber']) || null,
+              closeDate: getVal(['fecha cierre', 'closedate']) || null,
+              closeTime: getVal(['hora cierre', 'closetime']) || null,
+              solutionTimeMins: null, // Will be calculated below
               createdAt: Date.now(),
               updatedAt: Date.now()
             };
             t.solutionTimeMins = this.calculateSolutionTime(t);
-            await this.addTicket(t);
-            addedCount++;
+            try {
+              await this.addTicket(t);
+              addedCount++;
+            } catch (ticketErr: any) {
+              throw new Error(`Error en el ticket #${t.ticketNumber}: ${ticketErr.message}`);
+            }
           }
           resolve(addedCount);
-        } catch (err) {
+        } catch (err: any) {
           reject(err);
         }
       };

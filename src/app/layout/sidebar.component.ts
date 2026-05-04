@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, ElementRef } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -58,7 +58,7 @@ declare var bootstrap: any;
         <ul class="nav nav-pills flex-column gap-2">
           <!-- Profile Link -->
           <li class="nav-item">
-            <a href="javascript:void(0)" (click)="openProfileModal()" class="nav-link text-white opacity-75 d-flex align-items-center rounded-3 py-3" [ngClass]="isCollapsed ? 'justify-content-center px-0' : 'px-3'" title="Mi Perfil">
+            <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#profileModal" (click)="openProfile.emit()" class="nav-link text-white opacity-75 d-flex align-items-center rounded-3 py-3" [ngClass]="isCollapsed ? 'justify-content-center px-0' : 'px-3'" title="Mi Perfil">
               <i class="bi bi-person-circle fs-5" [ngClass]="!isCollapsed ? 'me-3' : 'me-0'"></i> 
               <span class="fw-medium" *ngIf="!isCollapsed">Mi Perfil ({{ auth.currentUser?.name }})</span>
             </a>
@@ -106,42 +106,6 @@ declare var bootstrap: any;
         <div class="mt-5 pt-3 text-center opacity-25 border-top border-secondary border-opacity-10" *ngIf="!isCollapsed">
            <small class="text-white font-monospace d-block" style="font-size: 0.6rem;">versión {{version}}</small>
         </div>
-      </div>
-    </div>
-
-    <!-- Modal de Perfil en el Sidebar -->
-    <div class="modal fade" #profileModal tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-          <div class="modal-header bg-dark text-white px-4">
-            <h5 class="modal-title fw-bold">Mi Perfil</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body p-4">
-            <div class="mb-3">
-              <label class="form-label fw-bold text-secondary">Usuario</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-person"></i></span>
-                <input type="text" class="form-control" [(ngModel)]="newUsername">
-                <span class="input-group-text small text-muted">@comasw.com</span>
-              </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold text-secondary">Nueva Contraseña</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                <input type="password" class="form-control" [(ngModel)]="newPassword" placeholder="Dejar en blanco para no cambiar">
-              </div>
-            </div>
-            
-            <div *ngIf="profileError" class="alert alert-danger py-2 small border-0 shadow-sm">{{profileError}}</div>
-            <div *ngIf="profileSuccess" class="alert alert-success py-2 small border-0 shadow-sm">{{profileSuccess}}</div>
-          </div>
-          <div class="modal-footer border-0 pt-0">
-            <button class="btn btn-primary w-100 fw-bold rounded-pill py-2 shadow-sm" (click)="saveProfile()">Actualizar Datos</button>
-          </div>
-        </div>
-      </div>
     </div>
   `,
   styles: [`
@@ -154,15 +118,8 @@ declare var bootstrap: any;
 })
 export class SidebarComponent {
   @Input() isCollapsed = false;
-  @ViewChild('profileModal') profileModalRef!: ElementRef;
+  @Output() openProfile = new EventEmitter<void>();
   version = packageInfo.version;
-  profileModalInstance: any;
-  
-  // Profile data
-  newUsername = '';
-  newPassword = '';
-  profileSuccess = '';
-  profileError = '';
 
   constructor(
     public auth: AuthService,
@@ -175,36 +132,6 @@ export class SidebarComponent {
     this.themeService.setTheme(mode);
   }
 
-  openProfileModal() {
-    if (!this.profileModalInstance) {
-      this.profileModalInstance = new bootstrap.Modal(this.profileModalRef.nativeElement);
-    }
-    this.newUsername = this.auth.currentUser?.username.split('@')[0] || '';
-    this.newPassword = '';
-    this.profileSuccess = '';
-    this.profileError = '';
-    this.profileModalInstance.show();
-  }
-
-  async saveProfile() {
-    this.profileError = '';
-    this.profileSuccess = '';
-    if (!this.newUsername) {
-      this.profileError = 'El usuario no puede estar vacío';
-      return;
-    }
-    if (this.newPassword && !/^(?=.*[A-Z])(?=.*[0-9])(?=.{8,}).*$/.test(this.newPassword)) {
-      this.profileError = 'La contraseña debe tener 8 caracteres, 1 mayúscula y 1 número.';
-      return;
-    }
-    try {
-      await this.auth.updateUser(this.auth.currentUser!.id, this.newUsername, this.newPassword || undefined);
-      this.profileSuccess = 'Perfil actualizado con éxito';
-      setTimeout(() => this.profileModalInstance?.hide(), 1500);
-    } catch (e: any) {
-      this.profileError = e.message;
-    }
-  }
 
   async logout() {
     const confirmed = await this.dialogService.confirm({

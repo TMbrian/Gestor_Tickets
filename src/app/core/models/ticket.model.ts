@@ -6,12 +6,12 @@ export interface Ticket {
   week: number;
   assignmentDate: string; // YYYY-MM-DD
   assignmentTime: string; // HH:mm
-  closeDate?: string; // YYYY-MM-DD
-  closeTime?: string; // HH:mm
-  solutionTimeMins?: number; // Calculated automatically
+  closeDate: string | null; // YYYY-MM-DD
+  closeTime: string | null; // HH:mm
+  solutionTimeMins: number | null; // Calculated automatically
   isAssigned: boolean;
   isRfc: boolean;
-  rfcNumber?: string;
+  rfcNumber: string | null;
   site: string;
   affectedArea: string;
   description: string;

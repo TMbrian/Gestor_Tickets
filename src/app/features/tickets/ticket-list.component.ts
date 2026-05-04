@@ -186,9 +186,9 @@ export class TicketListComponent implements OnInit {
         const addedCount = await this.ticketService.importFromExcel(file);
         this.loadTickets();
         alert(`Éxito: Se importaron ${addedCount} tickets desde Excel.`);
-      } catch (e) {
+      } catch (e: any) {
          console.error('Error importing', e);
-         alert('Error al importar el archivo Excel. Verifica el formato.');
+         alert(`Error al importar: ${e.message || 'Error desconocido'}`);
       }
       // Reset input file
       event.target.value = null;
