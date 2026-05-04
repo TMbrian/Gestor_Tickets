@@ -24,7 +24,7 @@ export class TicketListComponent implements OnInit {
 
   ticketForm!: FormGroup;
   isEditing = false;
-  currentEditId?: number;
+  currentEditId?: string;
 
   selectedWeek: number = 1;
   currentWeek: number = 1;
@@ -160,11 +160,15 @@ export class TicketListComponent implements OnInit {
     this.loadTickets();
   }
 
-  async deleteTicket(id?: number) {
+  async deleteTicket(id?: string) {
     if (id && confirm('¿Estás seguro de eliminar este ticket?')) {
       await this.ticketService.deleteTicket(id);
       this.loadTickets();
     }
+  }
+
+  async downloadTemplate() {
+    await this.ticketService.downloadTemplate();
   }
 
   exportExcel() {

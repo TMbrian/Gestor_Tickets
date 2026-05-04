@@ -1,104 +1,33 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Auth, authState, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from '@angular/fire/auth';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
+import { Router } from '@angular/router';
 import { User, Role } from '../models/user.model';
-import { DbService } from './db.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private currentUserSubject = new BehaviorSubject<User | null>(this.getStoredUser());
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$: Observable<User | null> = this.currentUserSubject.asObservable();
+  public isAdmin$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
 
-  public isAdmin$: Observable<boolean> = new BehaviorSubject<boolean>(this.currentUserSubject.value?.role === 'Admin');
-
-  constructor(private db: DbService) {
-    this.currentUser$.subscribe(user => {
-      (this.isAdmin$ as BehaviorSubject<boolean>).next(user?.role === 'Admin');
-    });
-  }
-
-  async register(username: string, password: string, role: Role): Promise<void> {
-    const fullUsername = username + '@comasw.com';
-    const existingUser = await this.db.users.get({ username: fullUsername });
-    
-    if (existingUser) {
-      throw new Error('El usuario ya existe');
-    }
-
-    // Check if an admin already exists
-    const adminCount = await this.db.users.count();
-    if (adminCount > 0) {
-      throw new Error('Solo se permite un Administrador en el sistema. Por favor inicia sesión.');
-    }
-
-    const generateId = () => {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
+  constructor(private auth: Auth, private router: Router) {
+    authState(this.auth).subscribe(firebaseUser => {
+      if (firebaseUser) {
+        const user: User = {
+          id: firebaseUser.uid,
+          username: firebaseUser.email || '',
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+          role: 'Admin' // Currently treating all logged users as Admin
+        };
+        this.currentUserSubject.next(user);
+        this.isAdmin$.next(true);
+      } else {
+        this.currentUserSubject.next(null);
+        this.isAdmin$.next(false);
       }
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
-    };
-    
-    const user = { 
-      id: generateId(), 
-      username: fullUsername, 
-      password,
-      name: username, 
-      role 
-    };
-    
-    await this.db.users.add(user);
-    this.setCurrentUser(user);
-  }
-
-  async login(username: string, password: string): Promise<void> {
-    const fullUsername = username + '@comasw.com';
-    const user = await this.db.users.get({ username: fullUsername });
-
-    if (!user) {
-      throw new Error('Usuario no encontrado');
-    }
-
-    if (user.password !== password) {
-      throw new Error('Contraseña incorrecta');
-    }
-    
-    this.setCurrentUser(user);
-  }
-
-  async updateUser(id: string, username: string, password?: string): Promise<void> {
-    const fullUsername = username + (username.includes('@') ? '' : '@comasw.com');
-    const updateData: any = { username: fullUsername, name: username };
-    if (password) updateData.password = password;
-
-    await this.db.users.update(id, updateData);
-    const updatedUser = await this.db.users.get(id);
-    if (updatedUser) {
-      this.setCurrentUser(updatedUser);
-    }
-  }
-
-  async recoverPassword(username: string): Promise<string> {
-    const fullUsername = username + (username.includes('@') ? '' : '@comasw.com');
-    const user = await this.db.users.get({ username: fullUsername });
-    if (!user) {
-      throw new Error('Usuario no encontrado');
-    }
-    
-    return `Usuario encontrado: ${user.username}\nTu contraseña es: ${user.password}`;
-  }
-
-  private setCurrentUser(user: any): void {
-    localStorage.setItem('currentUser', JSON.stringify(user));
-    this.currentUserSubject.next(user);
-  }
-
-  logout(): void {
-    localStorage.removeItem('currentUser');
-    this.currentUserSubject.next(null);
+    });
   }
 
   get currentUser(): User | null {
@@ -106,15 +35,43 @@ export class AuthService {
   }
 
   get isAdmin(): boolean {
-    return this.currentUser?.role === 'Admin';
+    return this.isAdmin$.value;
   }
 
-  private getStoredUser(): User | null {
-    try {
-      const user = localStorage.getItem('currentUser');
-      return user ? JSON.parse(user) : null;
-    } catch {
-      return null;
+  async login(username: string, password: string): Promise<void> {
+    const email = username.includes('@') ? username : `${username}@comasw.com`;
+    await signInWithEmailAndPassword(this.auth, email, password);
+  }
+
+  async register(username: string, password: string, role: Role): Promise<void> {
+    const email = username.includes('@') ? username : `${username}@comasw.com`;
+    const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
+    await updateProfile(userCredential.user, { displayName: username });
+  }
+
+  async logout() {
+    await signOut(this.auth);
+    this.router.navigate(['/login']);
+  }
+
+  async updateUser(id: string, username: string, password?: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (user) {
+      if (username) {
+        await updateProfile(user, { displayName: username });
+      }
+      // Re-trigger local state update
+      this.currentUserSubject.next({
+        ...this.currentUserSubject.value!,
+        name: username,
+        username: username.includes('@') ? username : `${username}@comasw.com`
+      });
     }
+  }
+
+  async recoverPassword(username: string): Promise<string> {
+    const email = username.includes('@') ? username : `${username}@comasw.com`;
+    await sendPasswordResetEmail(this.auth, email);
+    return `Se ha enviado un correo de recuperación a: ${email}. Revisa tu bandeja de entrada.`;
   }
 }

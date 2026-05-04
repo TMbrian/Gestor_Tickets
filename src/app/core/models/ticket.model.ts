@@ -1,7 +1,7 @@
 export type TicketStatus = 'Abierto' | 'En Progreso' | 'Cerrado';
 
 export interface Ticket {
-  id?: number;
+  id?: string;
   ticketNumber: string;
   week: number;
   assignmentDate: string; // YYYY-MM-DD

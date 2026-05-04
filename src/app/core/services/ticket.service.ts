@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { DbService } from './db.service';
+import { Firestore, collection, collectionData, doc, docData, addDoc, updateDoc, deleteDoc, query, where, getDocs, orderBy, limit } from '@angular/fire/firestore';
 import { Ticket, TicketStatistics, TicketStatus } from '../models/ticket.model';
 import { AuthService } from './auth.service';
+import { Observable, firstValueFrom, map } from 'rxjs';
 import * as XLSX from 'xlsx';
 
 @Injectable({
@@ -9,57 +10,65 @@ import * as XLSX from 'xlsx';
 })
 export class TicketService {
 
-  constructor(private db: DbService, private auth: AuthService) { }
+  constructor(private firestore: Firestore, private auth: AuthService) { }
 
   private get userId(): string {
     return this.auth.currentUser?.id || '';
   }
 
-  getTickets(): Promise<Ticket[]> {
-    return this.db.tickets.where('userId').equals(this.userId).toArray();
+  private get ticketsCollection() {
+    return collection(this.firestore, 'tickets');
   }
 
-  async getTicket(id: number): Promise<Ticket | undefined> {
-    return this.db.tickets.get(id);
+  async getTickets(): Promise<Ticket[]> {
+    if (!this.userId) return [];
+    const q = query(this.ticketsCollection, where('userId', '==', this.userId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
   }
 
-  async addTicket(ticket: Ticket): Promise<number> {
+  async getTicket(id: string): Promise<Ticket | undefined> {
+    const docRef = doc(this.firestore, `tickets/${id}`);
+    const docSnap = await firstValueFrom(docData(docRef, { idField: 'id' }));
+    return docSnap as Ticket;
+  }
+
+  async addTicket(ticket: Ticket): Promise<string> {
     ticket.userId = this.userId;
     ticket.solutionTimeMins = this.calculateSolutionTime(ticket);
     ticket.createdAt = Date.now();
     ticket.updatedAt = Date.now();
-    return this.db.tickets.add(ticket);
+    const docRef = await addDoc(this.ticketsCollection, ticket);
+    return docRef.id;
   }
 
-  async updateTicket(id: number, changes: Partial<Ticket>): Promise<number> {
+  async updateTicket(id: string, changes: Partial<Ticket>): Promise<void> {
     changes.updatedAt = Date.now();
     if (changes.assignmentDate !== undefined || changes.assignmentTime !== undefined || changes.closeDate !== undefined || changes.closeTime !== undefined) {
-      const ticket = await this.db.tickets.get(id);
+      const ticket = await this.getTicket(id);
       if (ticket) {
         const merged = { ...ticket, ...changes } as Ticket;
         changes.solutionTimeMins = this.calculateSolutionTime(merged);
       }
     }
-    return this.db.tickets.update(id, changes);
+    const docRef = doc(this.firestore, `tickets/${id}`);
+    return updateDoc(docRef, changes as any);
   }
 
-  async deleteTicket(id: number): Promise<void> {
-    return this.db.tickets.delete(id);
+  async deleteTicket(id: string): Promise<void> {
+    const docRef = doc(this.firestore, `tickets/${id}`);
+    return deleteDoc(docRef);
   }
 
   calculateSolutionTime(ticket: Ticket): number | undefined {
-    if (!ticket.closeDate || !ticket.closeTime) {
+    if (!ticket.closeDate || !ticket.closeTime || !ticket.assignmentDate || !ticket.assignmentTime) {
       return undefined;
     }
     const startStr = `${ticket.assignmentDate}T${ticket.assignmentTime}`;
     const endStr = `${ticket.closeDate}T${ticket.closeTime}`;
-    
     const start = new Date(startStr);
     const end = new Date(endStr);
-    
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return undefined;
-    }
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return undefined;
     return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
   }
 
@@ -72,15 +81,12 @@ export class TicketService {
         if (!t.assignmentDate) return false;
         const d = new Date(t.assignmentDate);
         if (isNaN(d.getTime())) return false;
-        
-        // Use same ISO week logic as TicketListComponent
         const date = new Date(d.getTime());
         date.setHours(0, 0, 0, 0);
         date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
         const week1 = new Date(date.getFullYear(), 0, 4);
         const isoWeek = 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
         const isoYear = date.getFullYear();
-        
         return isoWeek === week && isoYear === year;
       });
     }
@@ -100,7 +106,6 @@ export class TicketService {
       } else {
         stats.byStatus[t.status] = 1;
       }
-
       if (t.status === 'Cerrado' && t.solutionTimeMins !== undefined) {
         totalSolutionMins += t.solutionTimeMins;
         closedCountWithTime++;
@@ -110,7 +115,6 @@ export class TicketService {
     if (closedCountWithTime > 0) {
       stats.averageSolutionTimeMins = Math.round(totalSolutionMins / closedCountWithTime);
     }
-
     return stats;
   }
 
@@ -132,11 +136,33 @@ export class TicketService {
       'Hora Cierre': t.closeTime || '',
       'Solución Mins (Calc)': t.solutionTimeMins || 0
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(mapped);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Histórico');
     XLSX.writeFile(workbook, 'Historico_Tickets.xlsx');
+  }
+
+  async downloadTemplate(): Promise<void> {
+    const templateData = [{
+      'Número de Ticket': '12345',
+      'Semana': 1,
+      'Fecha Asignación': '2026-01-01',
+      'Hora Asignación': '08:00',
+      'Sitio/CEDI': 'CEDI Central',
+      'Área Afectada': 'Sistemas',
+      'Descripción': 'Descripción del problema aquí',
+      'Estado': 'Abierto',
+      'Asignado Oficialmente': 'SI',
+      'Emergente RFC': 'NO',
+      'Número RFC': '',
+      'Fecha Cierre': '',
+      'Hora Cierre': ''
+    }];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Plantilla_Importacion');
+    XLSX.writeFile(workbook, 'Plantilla_Tickets.xlsx');
   }
 
   async importFromExcel(file: File): Promise<number> {
@@ -154,11 +180,6 @@ export class TicketService {
           for (const row of jsonData) {
             const ticketNumber = row['Número de Ticket'] || row['NÚMERO DE TICKET'] || row['ticketNumber'];
             if (!ticketNumber) continue;
-
-            const existingArr = await this.db.tickets
-              .where({ ticketNumber: String(ticketNumber).trim(), userId: this.userId })
-              .toArray();
-            if (existingArr.length > 0) continue;
 
             const t: Ticket = {
               ticketNumber: String(ticketNumber).trim(),
@@ -178,9 +199,8 @@ export class TicketService {
               createdAt: Date.now(),
               updatedAt: Date.now()
             };
-            
             t.solutionTimeMins = this.calculateSolutionTime(t);
-            await this.db.tickets.add(t);
+            await this.addTicket(t);
             addedCount++;
           }
           resolve(addedCount);

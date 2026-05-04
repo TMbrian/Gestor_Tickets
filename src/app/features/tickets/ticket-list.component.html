@@ -1,27 +1,41 @@
-<div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary-subtle">
-  <div>
-    <h2 class="fw-bold mb-1 text-body-emphasis">Histórico de Tickets</h2>
-    <p class="text-muted mb-0">Gestión estilo Excel y persistencia local (Offline)</p>
+<div class="row align-items-center mb-4 pb-4 border-bottom pt-4">
+  <div class="col-12 mb-4">
+    <h2 class="fw-bold mb-1 text-body-emphasis d-flex align-items-center">
+      <i class="bi bi-clouds-fill text-primary me-2"></i> 
+      Histórico de Tickets
+    </h2>
+    <p class="text-muted mb-0 fw-medium">Gestión avanzada con sincronización en tiempo real (Cloud Firebase)</p>
   </div>
-  <div class="d-flex gap-2">
-    <input type="file" id="fileImport" class="d-none" (change)="onFileChange($event)" accept=".xlsx, .xls">
-    <button class="btn btn-outline-secondary fw-semibold shadow-sm rounded-pill" *ngIf="auth.isAdmin" onclick="document.getElementById('fileImport').click()">
-      <i class="bi bi-upload me-1"></i> Importar Excel
-    </button>
-    
-    <div class="dropdown">
-      <button class="btn btn-outline-success border-2 fw-semibold shadow-sm dropdown-toggle rounded-pill" type="button" data-bs-toggle="dropdown">
-        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Exportar
-      </button>
-      <ul class="dropdown-menu shadow-lg border-0 rounded-3">
-        <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" (click)="exportExcel()"><i class="bi bi-file-excel text-success me-2"></i>Exportar a XLSX</a></li>
-        <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" (click)="exportCSV()"><i class="bi bi-file-earmark-text text-secondary me-2"></i>Exportar a CSV</a></li>
-      </ul>
-    </div>
+  
+  <div class="col-12">
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+      <input type="file" id="fileImport" class="d-none" (change)="onFileChange($event)" accept=".xlsx, .xls">
+      
+      <!-- Group: Import/Template -->
+      <div class="btn-group shadow-sm rounded-pill overflow-hidden border">
+        <button class="btn btn-white bg-body px-4 py-2 fw-semibold border-0" (click)="downloadTemplate()" title="Bajar Formato Excel">
+          <i class="bi bi-download me-1"></i> Plantilla
+        </button>
+        <button class="btn btn-white bg-body px-4 py-2 fw-semibold border-start" onclick="document.getElementById('fileImport').click()" title="Subir Datos Excel">
+          <i class="bi bi-upload me-1"></i> Importar
+        </button>
+      </div>
 
-    <button class="btn btn-primary fw-bold px-4 shadow-sm rounded-pill ms-1" *ngIf="auth.isAdmin" (click)="openModal()">
-      <i class="bi bi-plus-lg me-1"></i> Nuevo Ticket
-    </button>
+      <!-- Group: Export -->
+      <div class="dropdown shadow-sm rounded-pill overflow-hidden">
+        <button class="btn btn-outline-success border-2 fw-bold px-4 py-2 dropdown-toggle rounded-pill" type="button" data-bs-toggle="dropdown">
+          <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Exportar
+        </button>
+        <ul class="dropdown-menu shadow-lg border-0 rounded-3 mt-2">
+          <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" (click)="exportExcel()"><i class="bi bi-file-excel text-success me-2"></i>Exportar a XLSX</a></li>
+          <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" (click)="exportCSV()"><i class="bi bi-file-earmark-text text-secondary me-2"></i>Exportar a CSV</a></li>
+        </ul>
+      </div>
+
+      <button class="btn btn-primary fw-bold px-5 py-2 shadow-sm rounded-pill ms-lg-auto" *ngIf="auth.isAdmin" (click)="openModal()">
+        <i class="bi bi-plus-lg me-1"></i> Nuevo Ticket
+      </button>
+    </div>
   </div>
 </div>
 
@@ -119,7 +133,7 @@
       </table>
     </div>
     <div class="d-flex justify-content-between mt-4 text-muted small fw-medium">
-      <div>Mostrando {{ filteredTickets.length }} tickets generados localmente.</div>
+      <div>Mostrando {{ filteredTickets.length }} tickets sincronizados en la nube.</div>
       <div *ngIf="auth.isAdmin"><i class="bi bi-mouse me-1"></i> Doble click en una fila para editar</div>
     </div>
   </div>
