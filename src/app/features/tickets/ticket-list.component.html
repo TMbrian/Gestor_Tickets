@@ -247,13 +247,17 @@
                   <div class="row g-3 align-items-center">
                     <div class="col-md-6">
                       <label class="form-label fw-semibold">CEDI / Sitio*</label>
-                      <input type="text" class="form-control bg-body" formControlName="site"
-                        placeholder="Ruta o Ciudad">
+                      <select class="form-select bg-body" formControlName="site">
+                        <option value="" disabled>Selecciona un sitio</option>
+                        <option *ngFor="let s of sites" [value]="s.name">{{ s.name }}</option>
+                      </select>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label fw-semibold">Área Afectada*</label>
-                      <input type="text" class="form-control bg-body" formControlName="affectedArea"
-                        placeholder="Ej: Operaciones, Redes, etc.">
+                      <select class="form-select bg-body" formControlName="affectedArea">
+                        <option value="" disabled>Selecciona un área</option>
+                        <option *ngFor="let a of areas" [value]="a.name">{{ a.name }}</option>
+                      </select>
                     </div>
 
                     <div class="col-md-12">

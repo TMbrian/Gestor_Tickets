@@ -247,4 +247,31 @@ export class TicketService {
       reader.readAsArrayBuffer(file);
     });
   }
+
+  // REFERENTIAL INTEGRITY
+  async countTicketsBySite(siteName: string): Promise<number> {
+    const q = query(this.ticketsCollection, where('userId', '==', this.userId), where('site', '==', siteName));
+    const snapshot = await getDocs(q);
+    return snapshot.size;
+  }
+
+  async countTicketsByArea(areaName: string): Promise<number> {
+    const q = query(this.ticketsCollection, where('userId', '==', this.userId), where('affectedArea', '==', areaName));
+    const snapshot = await getDocs(q);
+    return snapshot.size;
+  }
+
+  async bulkUpdateSiteName(oldName: string, newName: string): Promise<void> {
+    const q = query(this.ticketsCollection, where('userId', '==', this.userId), where('site', '==', oldName));
+    const snapshot = await getDocs(q);
+    const promises = snapshot.docs.map(d => updateDoc(doc(this.firestore, `tickets/${d.id}`), { site: newName, updatedAt: Date.now() }));
+    await Promise.all(promises);
+  }
+
+  async bulkUpdateAreaName(oldName: string, newName: string): Promise<void> {
+    const q = query(this.ticketsCollection, where('userId', '==', this.userId), where('affectedArea', '==', oldName));
+    const snapshot = await getDocs(q);
+    const promises = snapshot.docs.map(d => updateDoc(doc(this.firestore, `tickets/${d.id}`), { affectedArea: newName, updatedAt: Date.now() }));
+    await Promise.all(promises);
+  }
 }

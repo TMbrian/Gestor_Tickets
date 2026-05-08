@@ -47,6 +47,12 @@ declare var bootstrap: any;
               <span class="fw-medium" *ngIf="!isCollapsed">Historial de Tickets</span>
             </a>
           </li>
+          <li class="nav-item">
+            <a routerLink="/settings" routerLinkActive="active" class="nav-link text-white opacity-75 d-flex align-items-center rounded-3 py-3" [ngClass]="isCollapsed ? 'justify-content-center px-0' : 'px-3'" title="Configuración de Catálogos">
+              <i class="bi bi-gear-fill fs-5" [ngClass]="!isCollapsed ? 'me-3' : 'me-0'"></i> 
+              <span class="fw-medium" *ngIf="!isCollapsed">Configuración</span>
+            </a>
+          </li>
         </ul>
 
         <!-- Configuracion Section -->

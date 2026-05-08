@@ -3,10 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { TicketService } from '../../core/services/ticket.service';
 import { ExportService } from '../../core/services/export.service';
-import { Ticket } from '../../core/models/ticket.model';
+import { CatalogService } from '../../core/services/catalog.service';
+import { Ticket, Site, Area } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 
 declare var bootstrap: any;
+
+import { DateUtils } from '../../core/utils/date-utils';
 
 @Component({
   selector: 'app-ticket-list',
@@ -18,6 +21,8 @@ declare var bootstrap: any;
 export class TicketListComponent implements OnInit {
   tickets: Ticket[] = [];
   filteredTickets: Ticket[] = [];
+  sites: Site[] = [];
+  areas: Area[] = [];
 
   searchText = '';
   statusFilter = '';
@@ -35,28 +40,37 @@ export class TicketListComponent implements OnInit {
   constructor(
     private ticketService: TicketService,
     private exportService: ExportService,
+    private catalogService: CatalogService,
     private fb: FormBuilder,
     public auth: AuthService
   ) {
     this.initForm();
   }
 
-  ngOnInit() {
-    this.currentWeek = this.calculateISOWeek(new Date());
+  async ngOnInit() {
+    this.currentWeek = DateUtils.calculateISOWeek(new Date());
     this.selectedWeek = this.currentWeek;
-    this.loadTickets();
+    await this.loadTickets();
+    await this.loadCatalogs();
+
+    // Si no hay tickets en la semana actual pero hay tickets en general, 
+    // sugerir o saltar a la semana más reciente con datos.
+    if (this.filteredTickets.length === 0 && this.tickets.length > 0) {
+      const maxWeek = Math.max(...this.tickets.map(t => t.week));
+      if (maxWeek > 0 && maxWeek !== this.selectedWeek) {
+        this.selectedWeek = maxWeek;
+        this.applyFilters();
+      }
+    }
+  }
+
+  async loadCatalogs() {
+    this.sites = await this.catalogService.getSites();
+    this.areas = await this.catalogService.getAreas();
   }
 
   calculateISOWeek(d: Date): number {
-    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-
-    // ISO: semana empieza lunes, jueves define el año
-    const dayNum = date.getUTCDay() || 7;
-    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-
-    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return DateUtils.calculateISOWeek(d);
   }
 
   previousWeek() {
@@ -108,6 +122,12 @@ export class TicketListComponent implements OnInit {
 
   async loadTickets() {
     this.tickets = await this.ticketService.getTickets();
+    if (this.tickets.length > 0) {
+      const result = await this.catalogService.autoPopulateFromTickets(this.tickets);
+      if (result.sitesAdded > 0 || result.areasAdded > 0) {
+        await this.loadCatalogs();
+      }
+    }
     this.applyFilters();
   }
 
@@ -122,7 +142,12 @@ export class TicketListComponent implements OnInit {
     });
   }
 
-  openModal(ticket?: Ticket) {
+  async openModal(ticket?: Ticket) {
+    if (this.sites.length === 0 || this.areas.length === 0) {
+      alert('Atención: Debes registrar al menos un Sitio y un Área en la sección de Configuración antes de crear tickets.');
+      return;
+    }
+
     if (!this.modalInstance) {
       this.modalInstance = new bootstrap.Modal(this.ticketModalRef.nativeElement);
     }

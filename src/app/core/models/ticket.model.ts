@@ -26,3 +26,17 @@ export interface TicketStatistics {
   byStatus: { [key in TicketStatus]?: number };
   averageSolutionTimeMins: number;
 }
+
+export interface Site {
+  id?: string;
+  name: string;
+  userId: string;
+  createdAt: number;
+}
+
+export interface Area {
+  id?: string;
+  name: string;
+  userId: string;
+  createdAt: number;
+}

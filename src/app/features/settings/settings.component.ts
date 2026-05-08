@@ -1,0 +1,204 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { CatalogService } from '../../core/services/catalog.service';
+import { TicketService } from '../../core/services/ticket.service';
+import { Site, Area } from '../../core/models/ticket.model';
+import { DialogService } from '../../core/services/dialog.service';
+
+@Component({
+  selector: 'app-settings',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="mb-4 pb-3 border-bottom border-secondary-subtle d-flex justify-content-between align-items-center">
+      <div>
+        <h2 class="fw-bold mb-1 text-body-emphasis">Configuración de Catálogos</h2>
+        <p class="text-muted mb-0">Administra los Sitios y Áreas disponibles para los tickets.</p>
+      </div>
+      <button class="btn btn-outline-primary rounded-pill px-4 shadow-sm" (click)="syncFromTickets()" [disabled]="isSyncing">
+        <i class="bi" [ngClass]="isSyncing ? 'bi-arrow-repeat spin' : 'bi-arrow-clockwise'"></i>
+        Sincronizar desde Tickets
+      </button>
+    </div>
+
+    <div class="row g-4">
+      <!-- SITES SECTION -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-geo-alt-fill me-2"></i>Sitios (CEDIs)</h5>
+            <button class="btn btn-primary btn-sm rounded-pill px-3" (click)="addSite()">
+              <i class="bi bi-plus-lg me-1"></i> Agregar
+            </button>
+          </div>
+          
+          <div class="list-group list-group-flush custom-scrollbar overflow-auto" style="max-height: 400px;">
+            <div *ngIf="sites.length === 0" class="text-center py-5 opacity-50">
+               <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+               <span>No hay sitios registrados</span>
+            </div>
+            
+            <div *ngFor="let site of sites" class="list-group-item border-0 bg-transparent px-0 py-3 d-flex justify-content-between align-items-center hover-bg rounded-3 transition px-2 mb-1">
+              <span class="fw-medium text-body-emphasis">{{ site.name }}</span>
+              <div class="btn-group">
+                <button class="btn btn-sm btn-link text-secondary p-1 me-2" (click)="editSite(site)" title="Editar">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger border-0 rounded-circle" title="Eliminar" (click)="deleteSite(site)">
+                <i class="bi bi-trash"></i>
+              </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AREAS SECTION -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold mb-0 text-success"><i class="bi bi-diagram-3-fill me-2"></i>Áreas Afectadas</h5>
+            <button class="btn btn-success btn-sm rounded-pill px-3" (click)="addArea()">
+              <i class="bi bi-plus-lg me-1"></i> Agregar
+            </button>
+          </div>
+          
+          <div class="list-group list-group-flush custom-scrollbar overflow-auto" style="max-height: 400px;">
+            <div *ngIf="areas.length === 0" class="text-center py-5 opacity-50">
+               <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+               <span>No hay áreas registradas</span>
+            </div>
+            
+            <div *ngFor="let area of areas" class="list-group-item border-0 bg-transparent px-0 py-3 d-flex justify-content-between align-items-center hover-bg rounded-3 transition px-2 mb-1">
+              <span class="fw-medium text-body-emphasis">{{ area.name }}</span>
+              <div class="btn-group">
+                <button class="btn btn-sm btn-link text-secondary p-1 me-2" (click)="editArea(area)" title="Editar">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <button class="btn btn-sm btn-link text-danger p-1" (click)="deleteArea(area)" title="Eliminar">
+                  <i class="bi bi-trash3-fill"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals or Prompts for Add/Edit -->
+  `,
+  styles: [`
+    .hover-bg:hover { background-color: var(--bs-tertiary-bg); }
+    .transition { transition: all 0.2s ease-in-out; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  `]
+})
+export class SettingsComponent implements OnInit {
+  sites: Site[] = [];
+  areas: Area[] = [];
+  isSyncing = false;
+
+  constructor(
+    private catalogService: CatalogService,
+    private ticketService: TicketService,
+    private dialogService: DialogService
+  ) {}
+
+  async ngOnInit() {
+    await this.loadData();
+  }
+
+  async loadData() {
+    this.sites = await this.catalogService.getSites();
+    this.areas = await this.catalogService.getAreas();
+  }
+
+  async syncFromTickets() {
+    this.isSyncing = true;
+    try {
+      const tickets = await this.ticketService.getTickets();
+      if (tickets.length === 0) {
+        alert('No se encontraron tickets previos para sincronizar.');
+      } else {
+        const result = await this.catalogService.autoPopulateFromTickets(tickets);
+        await this.loadData();
+        alert(`Sincronización completada.\n- Nuevos Sitios: ${result.sitesAdded}\n- Nuevas Áreas: ${result.areasAdded}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error durante la sincronización.');
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  async addSite() {
+    const name = prompt('Nombre del Sitio (CEDI):');
+    if (name && name.trim()) {
+      await this.catalogService.addSite(name.trim());
+      this.loadData();
+    }
+  }
+
+  async editSite(site: Site) {
+    const oldName = site.name;
+    const newName = prompt('Editar nombre del Sitio:', oldName);
+    if (newName && newName.trim() && newName !== oldName) {
+      const confirmed = confirm(`¿Deseas actualizar el nombre a "${newName}"? Todos los tickets existentes asociados a "${oldName}" también serán actualizados automáticamente.`);
+      if (confirmed) {
+        await this.catalogService.updateSite(site.id!, newName.trim());
+        await this.ticketService.bulkUpdateSiteName(oldName, newName.trim());
+        this.loadData();
+      }
+    }
+  }
+
+  async deleteSite(site: Site) {
+    const count = await this.ticketService.countTicketsBySite(site.name);
+    if (count > 0) {
+      alert(`No se puede eliminar el sitio "${site.name}" porque está asociado a ${count} ticket(s). Favor de validar.`);
+      return;
+    }
+
+    if (confirm(`¿Estás seguro de eliminar el sitio "${site.name}"?`)) {
+      await this.catalogService.deleteSite(site.id!);
+      this.loadData();
+    }
+  }
+
+  async addArea() {
+    const name = prompt('Nombre del Área:');
+    if (name && name.trim()) {
+      await this.catalogService.addArea(name.trim());
+      this.loadData();
+    }
+  }
+
+  async editArea(area: Area) {
+    const oldName = area.name;
+    const newName = prompt('Editar nombre del Área:', oldName);
+    if (newName && newName.trim() && newName !== oldName) {
+      const confirmed = confirm(`¿Deseas actualizar el nombre a "${newName}"? Todos los tickets existentes asociados a "${oldName}" también serán actualizados automáticamente.`);
+      if (confirmed) {
+        await this.catalogService.updateArea(area.id!, newName.trim());
+        await this.ticketService.bulkUpdateAreaName(oldName, newName.trim());
+        this.loadData();
+      }
+    }
+  }
+
+  async deleteArea(area: Area) {
+    const count = await this.ticketService.countTicketsByArea(area.name);
+    if (count > 0) {
+      alert(`No se puede eliminar el área "${area.name}" porque está asociada a ${count} ticket(s). Favor de validar.`);
+      return;
+    }
+
+    if (confirm(`¿Estás seguro de eliminar el área "${area.name}"?`)) {
+      await this.catalogService.deleteArea(area.id!);
+      await this.loadData();
+    }
+  }
+}
