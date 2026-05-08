@@ -186,6 +186,12 @@ export class TicketListComponent implements OnInit {
     if (this.isEditing && this.currentEditId) {
       await this.ticketService.updateTicket(this.currentEditId, formValue);
     } else {
+      // 🚨 Check if ticket number already exists for this user
+      const existing = await this.ticketService.getTicketByNumber(formValue.ticketNumber);
+      if (existing) {
+        alert(`Atención: Ya existe un ticket con el número ${formValue.ticketNumber}. Si deseas modificarlo, búscalo en la lista y selecciona editar.`);
+        return;
+      }
       await this.ticketService.addTicket(formValue as Ticket);
     }
 
@@ -216,9 +222,14 @@ export class TicketListComponent implements OnInit {
     const file = event.target.files[0];
     if (file) {
       try {
-        const addedCount = await this.ticketService.importFromExcel(file);
+        const result = await this.ticketService.importFromExcel(file);
         this.loadTickets();
-        alert(`Éxito: Se importaron ${addedCount} tickets desde Excel.`);
+        
+        let message = `Proceso finalizado.\n- Nuevos: ${result.added}`;
+        if (result.skipped > 0) {
+          message += `\n- Omitidos (ya existen): ${result.skipped}`;
+        }
+        alert(message);
       } catch (e: any) {
         console.error('Error importing', e);
         alert(`Error al importar: ${e.message || 'Error desconocido'}`);

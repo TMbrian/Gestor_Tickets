@@ -33,6 +33,19 @@ export class TicketService {
     return docSnap as Ticket;
   }
 
+  async getTicketByNumber(ticketNumber: string): Promise<Ticket | undefined> {
+    if (!this.userId) return undefined;
+    const q = query(this.ticketsCollection, 
+      where('userId', '==', this.userId),
+      where('ticketNumber', '==', ticketNumber),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return undefined;
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as any;
+  }
+
   async addTicket(ticket: Ticket): Promise<string> {
     ticket.userId = this.userId;
     ticket.solutionTimeMins = this.calculateSolutionTime(ticket);
@@ -169,7 +182,7 @@ export class TicketService {
     XLSX.writeFile(workbook, 'Plantilla_Tickets.xlsx');
   }
 
-  async importFromExcel(file: File): Promise<number> {
+  async importFromExcel(file: File): Promise<{ added: number, skipped: number }> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -181,6 +194,7 @@ export class TicketService {
           const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
           let addedCount = 0;
+          let skippedCount = 0;
           for (const row of jsonData) {
             // Flexible header detection
             const getVal = (keys: string[]) => {
@@ -206,19 +220,25 @@ export class TicketService {
               rfcNumber: getVal(['número rfc', 'numero rfc', 'rfcnumber']) || null,
               closeDate: getVal(['fecha cierre', 'closedate']) || null,
               closeTime: getVal(['hora cierre', 'closetime']) || null,
-              solutionTimeMins: null, // Will be calculated below
+              solutionTimeMins: null,
               createdAt: Date.now(),
               updatedAt: Date.now()
             };
+
             t.solutionTimeMins = this.calculateSolutionTime(t);
             try {
-              await this.addTicket(t);
-              addedCount++;
+              const existing = await this.getTicketByNumber(t.ticketNumber);
+              if (existing) {
+                skippedCount++;
+              } else {
+                await this.addTicket(t);
+                addedCount++;
+              }
             } catch (ticketErr: any) {
               throw new Error(`Error en el ticket #${t.ticketNumber}: ${ticketErr.message}`);
             }
           }
-          resolve(addedCount);
+          resolve({ added: addedCount, skipped: skippedCount });
         } catch (err: any) {
           reject(err);
         }
