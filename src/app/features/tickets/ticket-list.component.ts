@@ -18,7 +18,7 @@ declare var bootstrap: any;
 export class TicketListComponent implements OnInit {
   tickets: Ticket[] = [];
   filteredTickets: Ticket[] = [];
-  
+
   searchText = '';
   statusFilter = '';
 
@@ -48,11 +48,15 @@ export class TicketListComponent implements OnInit {
   }
 
   calculateISOWeek(d: Date): number {
-    const date = new Date(d.getTime());
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-    const week1 = new Date(date.getFullYear(), 0, 4);
-    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+
+    // ISO: semana empieza lunes, jueves define el año
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+
+    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   }
 
   previousWeek() {
@@ -93,11 +97,11 @@ export class TicketListComponent implements OnInit {
 
     this.ticketForm.get('assignmentDate')?.valueChanges.subscribe(val => {
       if (val) {
-        const d = new Date(val);
-        if (!isNaN(d.getTime())) {
-          const week = this.calculateISOWeek(d);
-          this.ticketForm.patchValue({ week }, { emitEvent: false });
-        }
+        const [year, month, day] = val.split('-').map(Number);
+        const d = new Date(year, month - 1, day); // ✅ LOCAL
+
+        const week = this.calculateISOWeek(d);
+        this.ticketForm.patchValue({ week }, { emitEvent: false });
       }
     });
   }
@@ -109,7 +113,7 @@ export class TicketListComponent implements OnInit {
 
   applyFilters() {
     this.filteredTickets = this.tickets.filter(t => {
-      const matchSearch = Object.values(t as any).some((val: any) => 
+      const matchSearch = Object.values(t as any).some((val: any) =>
         val !== undefined && val !== null && String(val).toLowerCase().includes(this.searchText.toLowerCase())
       );
       const matchStatus = this.statusFilter ? t.status === this.statusFilter : true;
@@ -120,25 +124,54 @@ export class TicketListComponent implements OnInit {
 
   openModal(ticket?: Ticket) {
     if (!this.modalInstance) {
-       this.modalInstance = new bootstrap.Modal(this.ticketModalRef.nativeElement);
+      this.modalInstance = new bootstrap.Modal(this.ticketModalRef.nativeElement);
     }
+
     if (ticket) {
       this.isEditing = true;
       this.currentEditId = ticket.id;
-      this.ticketForm.patchValue(ticket);
+
+      // ⚠️ IMPORTANTE: recalcular semana por si viene mal guardada
+      let week = ticket.week;
+
+      if (ticket.assignmentDate) {
+        const [year, month, day] = ticket.assignmentDate.split('-').map(Number);
+        const safeDate = new Date(year, month - 1, day);
+        week = this.calculateISOWeek(safeDate);
+      }
+
+      this.ticketForm.patchValue({
+        ...ticket,
+        week
+      });
+
     } else {
       this.isEditing = false;
       this.currentEditId = undefined;
-      const todayDate = new Date().toISOString().split('T')[0];
-      const timeStr = new Date().toLocaleTimeString('en-GB', { hour: "2-digit", minute: "2-digit" });
-      this.ticketForm.reset({ 
-        status: 'Abierto', 
-        isAssigned: false, 
+
+      const today = new Date();
+
+      // ✅ Fecha LOCAL (NO UTC)
+      const todayDate = `${today.getFullYear()}-${(today.getMonth() + 1)
+        .toString().padStart(2, '0')}-${today.getDate()
+          .toString().padStart(2, '0')}`;
+
+      // ✅ Hora limpia
+      const timeStr = today.toTimeString().slice(0, 5);
+
+      // ✅ Semana correcta
+      const week = this.calculateISOWeek(today);
+
+      this.ticketForm.reset({
+        status: 'Abierto',
+        isAssigned: false,
         isRfc: false,
         assignmentDate: todayDate,
-        assignmentTime: timeStr
+        assignmentTime: timeStr,
+        week // 🔥 AQUÍ estaba faltando
       });
     }
+
     this.modalInstance.show();
   }
 
@@ -155,7 +188,7 @@ export class TicketListComponent implements OnInit {
     } else {
       await this.ticketService.addTicket(formValue as Ticket);
     }
-    
+
     this.closeModal();
     this.loadTickets();
   }
@@ -187,8 +220,8 @@ export class TicketListComponent implements OnInit {
         this.loadTickets();
         alert(`Éxito: Se importaron ${addedCount} tickets desde Excel.`);
       } catch (e: any) {
-         console.error('Error importing', e);
-         alert(`Error al importar: ${e.message || 'Error desconocido'}`);
+        console.error('Error importing', e);
+        alert(`Error al importar: ${e.message || 'Error desconocido'}`);
       }
       // Reset input file
       event.target.value = null;

@@ -19,7 +19,7 @@ declare var bootstrap: any;
       
       <!-- Brand Header -->
       <div class="p-4 mb-2 border-bottom border-secondary border-opacity-25">
-        <a href="/" class="d-flex align-items-center text-white text-decoration-none" [ngClass]="isCollapsed ? 'justify-content-center' : ''">
+        <a routerLink="/" class="d-flex align-items-center text-white text-decoration-none" [ngClass]="isCollapsed ? 'justify-content-center' : ''">
           <div class="bg-primary bg-gradient rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="min-width: 42px; height: 42px;">
             <i class="bi bi-layers-fill fs-4 text-white"></i>
           </div>

@@ -11,6 +11,7 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$: Observable<User | null> = this.currentUserSubject.asObservable();
   public isAdmin$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+  public isInitialized$ = new BehaviorSubject<boolean>(false);
 
   constructor(private auth: Auth, private router: Router) {
     authState(this.auth).subscribe(firebaseUser => {
@@ -27,6 +28,7 @@ export class AuthService {
         this.currentUserSubject.next(null);
         this.isAdmin$.next(false);
       }
+      this.isInitialized$.next(true);
     });
   }
 
