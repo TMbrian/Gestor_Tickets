@@ -1,59 +1,95 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
-export type ThemeMode = 'light' | 'dark' | 'system';
+/** Modos de tema visual disponibles en la aplicación */
+export type ModoTema = 'light' | 'dark' | 'system';
 
+/** Clave usada para persistir la preferencia de tema en localStorage */
+const CLAVE_PREFERENCIA_TEMA = 'theme-preference';
+
+/**
+ * Servicio de gestión del tema visual de la aplicación.
+ *
+ * Permite alternar entre los modos claro, oscuro y automático (sistema).
+ * Persiste la preferencia del usuario en `localStorage` y reacciona
+ * a cambios en la preferencia del sistema operativo en tiempo real.
+ */
 @Injectable({
   providedIn: 'root'
 })
-export class ThemeService {
-  private themeSubject = new BehaviorSubject<ThemeMode>(this.getStoredTheme());
-  theme$ = this.themeSubject.asObservable();
+export class ServicioTema {
+
+  /** Subject interno que mantiene el modo de tema activo */
+  private subjectTema = new BehaviorSubject<ModoTema>(this.obtenerTemaGuardado());
+
+  /** Observable público del modo de tema activo */
+  tema$ = this.subjectTema.asObservable();
 
   constructor() {
-    this.initTheme();
-    
-    // Listen for system theme changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (this.themeSubject.value === 'system') {
-        this.applyTheme('system');
+    this.inicializarTema();
+
+    // Escucha cambios en la preferencia de tema del sistema operativo.
+    // Solo tiene efecto cuando el modo activo es 'system'.
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (this.subjectTema.value === 'system') {
+        this.aplicarTema('system');
       }
     });
   }
 
-  private initTheme() {
-    const mode = this.getStoredTheme();
-    this.themeSubject.next(mode);
-    this.applyTheme(mode);
+  /**
+   * Inicializa el tema al arrancar el servicio aplicando
+   * la preferencia guardada o el valor por defecto ('system').
+   */
+  private inicializarTema(): void {
+    const modo = this.obtenerTemaGuardado();
+    this.subjectTema.next(modo);
+    this.aplicarTema(modo);
   }
 
-  setTheme(mode: ThemeMode) {
-    localStorage.setItem('theme-preference', mode);
-    this.themeSubject.next(mode);
-    this.applyTheme(mode);
+  /**
+   * Cambia el tema activo, persiste la preferencia en `localStorage`
+   * y aplica los cambios visuales de inmediato en el DOM.
+   *
+   * @param modo - Modo de tema a establecer: 'light', 'dark' o 'system'.
+   */
+  establecerTema(modo: ModoTema): void {
+    localStorage.setItem(CLAVE_PREFERENCIA_TEMA, modo);
+    this.subjectTema.next(modo);
+    this.aplicarTema(modo);
   }
 
-  get currentTheme(): ThemeMode {
-    return this.themeSubject.value;
+  /**
+   * Devuelve de forma síncrona el modo de tema actualmente activo.
+   */
+  get temaActual(): ModoTema {
+    return this.subjectTema.value;
   }
 
-  private applyTheme(mode: ThemeMode) {
-    let themeToApply = mode;
-    if (mode === 'system') {
+  /**
+   * Aplica el tema indicado al DOM modificando los atributos de Bootstrap
+   * y las clases del `body`. Si el modo es 'system', detecta la preferencia
+   * del sistema operativo y aplica 'dark' o 'light' según corresponda.
+   *
+   * @param modo - Modo de tema a aplicar en el DOM.
+   */
+  private aplicarTema(modo: ModoTema): void {
+    let temaEfectivo: Exclude<ModoTema, 'system'> = modo as Exclude<ModoTema, 'system'>;
+
+    if (modo === 'system') {
       try {
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        themeToApply = systemDark ? 'dark' : 'light';
-      } catch (e) {
-        console.warn('Could not detect system theme, defaulting to light', e);
-        themeToApply = 'light';
+        const sistemaEsOscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        temaEfectivo = sistemaEsOscuro ? 'dark' : 'light';
+      } catch (error) {
+        console.warn('No se pudo detectar el tema del sistema; se usará el modo claro.', error);
+        temaEfectivo = 'light';
       }
     }
-    
-    // Applying to both root and body for maximum compatibility
-    document.documentElement.setAttribute('data-bs-theme', themeToApply);
-    
-    // Manually force dark mode on body as well
-    if (themeToApply === 'dark') {
+
+    // Se aplica en el elemento raíz y en el body para máxima compatibilidad con Bootstrap
+    document.documentElement.setAttribute('data-bs-theme', temaEfectivo);
+
+    if (temaEfectivo === 'dark') {
       document.body.setAttribute('data-bs-theme', 'dark');
       document.body.classList.add('bg-dark', 'text-white');
     } else {
@@ -62,7 +98,11 @@ export class ThemeService {
     }
   }
 
-  private getStoredTheme(): ThemeMode {
-    return (localStorage.getItem('theme-preference') as ThemeMode) || 'system';
+  /**
+   * Lee la preferencia de tema almacenada en `localStorage`.
+   * Retorna `'system'` si no existe ninguna preferencia guardada.
+   */
+  private obtenerTemaGuardado(): ModoTema {
+    return (localStorage.getItem(CLAVE_PREFERENCIA_TEMA) as ModoTema) || 'system';
   }
 }

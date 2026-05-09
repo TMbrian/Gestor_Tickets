@@ -1,17 +1,23 @@
 import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { TicketService } from '../../core/services/ticket.service';
-import { ExportService } from '../../core/services/exportacion.service';
-import { CatalogService } from '../../core/services/catalogo.service';
-import { Ticket, Site, Area } from '../../core/models/ticket.modelo';
-import { AuthService } from '../../core/services/autenticacion.service';
+import {
+  ServicioTickets, ServicioExportacion, ServicioCatalogos,
+  ServicioAutenticacion, ServicioDialogo
+} from '../../core/services';
+import { Ticket, Sitio, Area } from '../../core/models';
+import { UtilidadesFecha } from '../../core/utils/utilidades-fecha';
 
 declare var bootstrap: any;
 
-import { DateUtils } from '../../core/utils/utilidades-fecha';
-import { DialogService } from '../../core/services/dialogo.service';
-
+/**
+ * Componente que despliega el listado de tickets filtrado por semana ISO.
+ *
+ * Permite buscar, filtrar por estado, navegar entre semanas, crear y editar
+ * tickets mediante un modal de Bootstrap, exportar a Excel (semana o histórico
+ * completo), descargar la plantilla de importación y cargar tickets desde un
+ * archivo Excel.
+ */
 @Component({
   selector: 'app-ticket-list',
   standalone: true,
@@ -19,306 +25,435 @@ import { DialogService } from '../../core/services/dialogo.service';
   templateUrl: './lista-tickets.component.html',
   styleUrls: ['./lista-tickets.component.scss']
 })
-export class TicketListComponent implements OnInit {
+export class ListaTicketsComponent implements OnInit {
+  /** Listado completo de tickets del usuario autenticado */
   tickets: Ticket[] = [];
-  filteredTickets: Ticket[] = [];
-  sites: Site[] = [];
+
+  /** Tickets que pasan los filtros activos (semana, estado y texto de búsqueda) */
+  ticketsFiltrados: Ticket[] = [];
+
+  /** Catálogo de sitios disponibles para el formulario */
+  sitios: Sitio[] = [];
+
+  /** Catálogo de áreas afectadas disponibles para el formulario */
   areas: Area[] = [];
 
-  searchText = '';
-  statusFilter = '';
+  /** Texto que el usuario captura en el buscador de la tabla */
+  textoBusqueda = '';
 
-  ticketForm!: FormGroup;
-  isEditing = false;
-  currentEditId?: string;
+  /** Filtro activo por estado del ticket (vacío = todos los estados) */
+  filtroEstado = '';
 
-  selectedWeek: number = 1;
-  currentWeek: number = 1;
+  /** Formulario reactivo utilizado tanto para crear como para editar tickets */
+  formularioTicket!: FormGroup;
 
-  @ViewChild('ticketModal') ticketModalRef!: ElementRef;
-  modalInstance: any;
+  /** Indica si el modal está abierto en modo edición (true) o creación (false) */
+  modoEdicion = false;
 
+  /** ID del ticket que se está editando actualmente (sólo en modo edición) */
+  idEdicionActual?: string;
+
+  /** Número de la semana ISO seleccionada en el filtro */
+  semanaSeleccionada: number = 1;
+
+  /** Número de la semana ISO real (la del día de hoy) */
+  semanaActual: number = 1;
+
+  /** Referencia al elemento HTML del modal de Bootstrap */
+  @ViewChild('ticketModal') referenciaModalTicket!: ElementRef;
+
+  /** Instancia del modal de Bootstrap creada al abrirlo por primera vez */
+  instanciaModal: any;
+
+  /**
+   * Constructor del componente.
+   *
+   * @param servicioTickets       - Servicio para CRUD y consulta de tickets.
+   * @param servicioExportacion   - Servicio de exportación a Excel (no usado directamente aquí; mantenido por compatibilidad).
+   * @param servicioCatalogos     - Servicio que provee los catálogos de sitios y áreas.
+   * @param servicioDialogo       - Servicio para mostrar alertas, confirmaciones y el cargador global.
+   * @param fb                    - Constructor de formularios reactivos de Angular.
+   * @param auth                  - Servicio de autenticación expuesto público para uso desde la plantilla.
+   */
   constructor(
-    private ticketService: TicketService,
-    private exportService: ExportService,
-    private catalogService: CatalogService,
-    private dialogService: DialogService,
+    private servicioTickets: ServicioTickets,
+    private servicioExportacion: ServicioExportacion,
+    private servicioCatalogos: ServicioCatalogos,
+    private servicioDialogo: ServicioDialogo,
     private fb: FormBuilder,
-    public auth: AuthService
+    public auth: ServicioAutenticacion
   ) {
-    this.initForm();
+    this.inicializarFormulario();
   }
 
+  /**
+   * Hook del ciclo de vida que inicializa la semana actual y carga los datos
+   * iniciales (tickets y catálogos).
+   *
+   * Si la semana actual no contiene tickets pero existen tickets en otras
+   * semanas, salta automáticamente a la semana más reciente con datos.
+   */
   async ngOnInit() {
-    this.currentWeek = DateUtils.calculateISOWeek(new Date());
-    this.selectedWeek = this.currentWeek;
-    await this.loadTickets();
-    await this.loadCatalogs();
+    this.semanaActual = UtilidadesFecha.calcularSemanaISO(new Date());
+    this.semanaSeleccionada = this.semanaActual;
+    await this.cargarTickets();
+    await this.cargarCatalogos();
 
-    // Si no hay tickets en la semana actual pero hay tickets en general, 
-    // sugerir o saltar a la semana más reciente con datos.
-    if (this.filteredTickets.length === 0 && this.tickets.length > 0) {
-      const maxWeek = Math.max(...this.tickets.map(t => t.week));
-      if (maxWeek > 0 && maxWeek !== this.selectedWeek) {
-        this.selectedWeek = maxWeek;
-        this.applyFilters();
+    // Si no hay tickets en la semana actual pero hay tickets en general,
+    // saltar automáticamente a la semana más reciente con datos.
+    if (this.ticketsFiltrados.length === 0 && this.tickets.length > 0) {
+      const semanaMaxima = Math.max(...this.tickets.map(t => t.semana));
+      if (semanaMaxima > 0 && semanaMaxima !== this.semanaSeleccionada) {
+        this.semanaSeleccionada = semanaMaxima;
+        this.aplicarFiltros();
       }
     }
   }
 
-  async loadCatalogs() {
-    this.sites = await this.catalogService.getSites();
-    this.areas = await this.catalogService.getAreas();
+  /**
+   * Carga los catálogos de sitios y áreas desde el servicio correspondiente.
+   *
+   * @returns Promise<void> que se resuelve cuando ambos catálogos están listos.
+   */
+  async cargarCatalogos() {
+    this.sitios = await this.servicioCatalogos.obtenerSitios();
+    this.areas = await this.servicioCatalogos.obtenerAreas();
   }
 
-  calculateISOWeek(d: Date): number {
-    return DateUtils.calculateISOWeek(d);
+  /**
+   * Calcula el número de semana ISO 8601 de una fecha dada.
+   *
+   * Wrapper que delega en `UtilidadesFecha` para mantener la lógica centralizada.
+   *
+   * @param fecha - Fecha de la cual se desea calcular la semana ISO.
+   * @returns Número de semana ISO (1-53).
+   */
+  calcularSemanaIso(fecha: Date): number {
+    return UtilidadesFecha.calcularSemanaISO(fecha);
   }
 
-  previousWeek() {
-    if (this.selectedWeek > 1) {
-      this.selectedWeek--;
-      this.applyFilters();
+  /**
+   * Retrocede una semana en el filtro y vuelve a aplicar los filtros.
+   * No permite ir por debajo de la semana 1.
+   */
+  semanaAnterior() {
+    if (this.semanaSeleccionada > 1) {
+      this.semanaSeleccionada--;
+      this.aplicarFiltros();
     }
   }
 
-  nextWeek() {
-    if (this.selectedWeek < 53) {
-      this.selectedWeek++;
-      this.applyFilters();
+  /**
+   * Avanza una semana en el filtro y vuelve a aplicar los filtros.
+   * No permite ir más allá de la semana 53.
+   */
+  semanaSiguiente() {
+    if (this.semanaSeleccionada < 53) {
+      this.semanaSeleccionada++;
+      this.aplicarFiltros();
     }
   }
 
-  goToCurrentWeek() {
-    this.selectedWeek = this.currentWeek;
-    this.applyFilters();
+  /**
+   * Reposiciona el filtro en la semana ISO actual y refresca el listado.
+   */
+  irASemanaActual() {
+    this.semanaSeleccionada = this.semanaActual;
+    this.aplicarFiltros();
   }
 
-  initForm() {
-    this.ticketForm = this.fb.group({
-      ticketNumber: ['', [Validators.required, Validators.pattern('^[0-9]+$')]],
-      week: [1, [Validators.required, Validators.min(1), Validators.max(53)]],
-      assignmentDate: ['', Validators.required],
-      assignmentTime: ['', Validators.required],
-      closeDate: [''],
-      closeTime: [''],
-      isAssigned: [false],
-      isRfc: [false],
-      rfcNumber: [''],
-      site: ['', Validators.required],
-      affectedArea: ['', Validators.required],
-      description: ['', Validators.required],
-      status: ['Abierto', Validators.required]
+  /**
+   * Construye el formulario reactivo de tickets con sus validadores.
+   *
+   * Además, suscribe el campo `fechaAsignacion` para recalcular automáticamente
+   * la semana ISO cada vez que el usuario cambia la fecha de asignación.
+   */
+  inicializarFormulario() {
+    this.formularioTicket = this.fb.group({
+      numeroTicket: ['', [Validators.required, Validators.pattern('^[0-9]+$')]],
+      semana: [1, [Validators.required, Validators.min(1), Validators.max(53)]],
+      fechaAsignacion: ['', Validators.required],
+      horaAsignacion: ['', Validators.required],
+      fechaCierre: [''],
+      horaCierre: [''],
+      isAsignado: [false],
+      esRfc: [false],
+      numeroRfc: [''],
+      sitio: ['', Validators.required],
+      areaAfectada: ['', Validators.required],
+      descripcion: ['', Validators.required],
+      estado: ['Abierto', Validators.required]
     });
 
-    this.ticketForm.get('assignmentDate')?.valueChanges.subscribe(val => {
-      if (val) {
-        const [year, month, day] = val.split('-').map(Number);
-        const d = new Date(year, month - 1, day); // ✅ LOCAL
+    // Recalcular automáticamente la semana ISO al cambiar la fecha de asignación
+    this.formularioTicket.get('fechaAsignacion')?.valueChanges.subscribe(valor => {
+      if (valor) {
+        const [anio, mes, dia] = valor.split('-').map(Number);
+        const fechaLocal = new Date(anio, mes - 1, dia); // Fecha LOCAL (no UTC)
 
-        const week = this.calculateISOWeek(d);
-        this.ticketForm.patchValue({ week }, { emitEvent: false });
+        const semana = this.calcularSemanaIso(fechaLocal);
+        this.formularioTicket.patchValue({ semana: semana }, { emitEvent: false });
       }
     });
   }
 
-  async loadTickets() {
-    this.tickets = await this.ticketService.getTickets();
+  /**
+   * Carga todos los tickets del usuario y dispara el auto-poblado de catálogos
+   * a partir de los datos de los tickets cuando es necesario.
+   *
+   * Si se agregaron sitios o áreas nuevas durante el auto-poblado, recarga
+   * los catálogos para reflejarlos en el formulario.
+   */
+  async cargarTickets() {
+    this.tickets = await this.servicioTickets.obtenerTickets();
     if (this.tickets.length > 0) {
-      const result = await this.catalogService.autoPopulateFromTickets(this.tickets);
-      if (result.sitesAdded > 0 || result.areasAdded > 0) {
-        await this.loadCatalogs();
+      const resultado = await this.servicioCatalogos.autoPopularDesdTickets(this.tickets);
+      if (resultado.sitiosAgregados > 0 || resultado.areasAgregadas > 0) {
+        await this.cargarCatalogos();
       }
     }
-    this.applyFilters();
+    this.aplicarFiltros();
   }
 
-  applyFilters() {
-    this.filteredTickets = this.tickets.filter(t => {
-      const matchSearch = Object.values(t as any).some((val: any) =>
-        val !== undefined && val !== null && String(val).toLowerCase().includes(this.searchText.toLowerCase())
+  /**
+   * Aplica los filtros activos (texto, estado y semana) sobre la lista
+   * completa de tickets y actualiza `ticketsFiltrados`.
+   */
+  aplicarFiltros() {
+    this.ticketsFiltrados = this.tickets.filter(ticket => {
+      // Coincidencia por texto: busca el término en cualquier propiedad del ticket
+      const coincideTexto = Object.values(ticket as any).some((valor: any) =>
+        valor !== undefined && valor !== null &&
+        String(valor).toLowerCase().includes(this.textoBusqueda.toLowerCase())
       );
-      const matchStatus = this.statusFilter ? t.status === this.statusFilter : true;
-      const matchWeek = t.week === this.selectedWeek;
-      return matchSearch && matchStatus && matchWeek;
+      // Coincidencia por estado: si no hay filtro, todos pasan
+      const coincideEstado = this.filtroEstado ? ticket.estado === this.filtroEstado : true;
+      // Coincidencia por semana ISO seleccionada
+      const coincideSemana = ticket.semana === this.semanaSeleccionada;
+      return coincideTexto && coincideEstado && coincideSemana;
     });
   }
 
-  async openModal(ticket?: Ticket) {
-    if (this.sites.length === 0 || this.areas.length === 0) {
-      await this.dialogService.alert({
-        title: 'Configuración Requerida',
-        message: 'Atención: Debes registrar al menos un Sitio y un Área en la sección de Configuración antes de crear tickets.',
-        type: 'warning'
+  /**
+   * Abre el modal en modo creación (sin parámetro) o edición (con ticket).
+   *
+   * Antes de abrir valida que existan sitios y áreas registrados; si no,
+   * muestra una alerta y aborta la apertura. En modo edición pide confirmación
+   * al usuario y recalcula la semana del ticket por si vino mal almacenada.
+   *
+   * @param ticket - Ticket a editar. Si se omite, abre el modal en modo creación.
+   */
+  async abrirModal(ticket?: Ticket) {
+    if (this.sitios.length === 0 || this.areas.length === 0) {
+      await this.servicioDialogo.alerta({
+        titulo: 'Configuración Requerida',
+        mensaje: 'Atención: Debes registrar al menos un Sitio y un Área en la sección de Configuración antes de crear tickets.',
+        tipo: 'warning'
       });
       return;
     }
 
     if (ticket) {
-      const confirmed = await this.dialogService.confirm({
-        title: 'Editar Ticket',
-        message: `¿Deseas editar la información del ticket #${ticket.ticketNumber}?`,
-        type: 'primary',
-        confirmText: 'Editar'
+      const confirmado = await this.servicioDialogo.confirmar({
+        titulo: 'Editar Ticket',
+        mensaje: `¿Deseas editar la información del ticket #${ticket.numeroTicket}?`,
+        tipo: 'primary',
+        textoConfirmar: 'Editar'
       });
-      if (!confirmed) return;
+      if (!confirmado) return;
     }
 
-    if (!this.modalInstance) {
-      this.modalInstance = new bootstrap.Modal(this.ticketModalRef.nativeElement);
+    // Lazy-init del modal de Bootstrap la primera vez que se abre
+    if (!this.instanciaModal) {
+      this.instanciaModal = new bootstrap.Modal(this.referenciaModalTicket.nativeElement);
     }
 
     if (ticket) {
-      this.isEditing = true;
-      this.currentEditId = ticket.id;
+      this.modoEdicion = true;
+      this.idEdicionActual = ticket.id;
 
       // ⚠️ IMPORTANTE: recalcular semana por si viene mal guardada
-      let week = ticket.week;
+      let semana = ticket.semana;
 
-      if (ticket.assignmentDate) {
-        const [year, month, day] = ticket.assignmentDate.split('-').map(Number);
-        const safeDate = new Date(year, month - 1, day);
-        week = this.calculateISOWeek(safeDate);
+      if (ticket.fechaAsignacion) {
+        const [anio, mes, dia] = ticket.fechaAsignacion.split('-').map(Number);
+        const fechaSegura = new Date(anio, mes - 1, dia);
+        semana = this.calcularSemanaIso(fechaSegura);
       }
 
-      this.ticketForm.patchValue({
+      this.formularioTicket.patchValue({
         ...ticket,
-        week
+        semana: semana
       });
 
     } else {
-      this.isEditing = false;
-      this.currentEditId = undefined;
+      this.modoEdicion = false;
+      this.idEdicionActual = undefined;
 
-      const today = new Date();
+      const hoy = new Date();
 
       // ✅ Fecha LOCAL (NO UTC)
-      const todayDate = `${today.getFullYear()}-${(today.getMonth() + 1)
-        .toString().padStart(2, '0')}-${today.getDate()
+      const fechaHoy = `${hoy.getFullYear()}-${(hoy.getMonth() + 1)
+        .toString().padStart(2, '0')}-${hoy.getDate()
           .toString().padStart(2, '0')}`;
 
-      // ✅ Hora limpia
-      const timeStr = today.toTimeString().slice(0, 5);
+      // ✅ Hora limpia en formato HH:mm
+      const horaTexto = hoy.toTimeString().slice(0, 5);
 
-      // ✅ Semana correcta
-      const week = this.calculateISOWeek(today);
+      // ✅ Semana correcta según fecha de hoy
+      const semana = this.calcularSemanaIso(hoy);
 
-      this.ticketForm.reset({
+      this.formularioTicket.reset({
         status: 'Abierto',
         isAssigned: false,
-        isRfc: false,
-        assignmentDate: todayDate,
-        assignmentTime: timeStr,
-        week // 🔥 AQUÍ estaba faltando
+        esRfc: false,
+        fechaAsignacion: fechaHoy,
+        horaAsignacion: horaTexto,
+        week: semana
       });
     }
 
-    this.modalInstance.show();
+    this.instanciaModal.show();
   }
 
-  closeModal() {
-    this.modalInstance?.hide();
+  /**
+   * Cierra el modal de tickets si existe la instancia.
+   */
+  cerrarModal() {
+    this.instanciaModal?.hide();
   }
 
-  async saveTicket() {
-    if (this.ticketForm.invalid) return;
-    const formValue = this.ticketForm.value;
+  /**
+   * Guarda el ticket actual: crea uno nuevo o actualiza el existente según
+   * el modo en que se abrió el modal.
+   *
+   * En creación valida que el número de ticket no esté duplicado para el
+   * usuario; si lo está, muestra una alerta y aborta el guardado.
+   */
+  async guardarTicket() {
+    if (this.formularioTicket.invalid) return;
+    const valoresFormulario = this.formularioTicket.value;
 
-    if (this.isEditing && this.currentEditId) {
-      await this.ticketService.updateTicket(this.currentEditId, formValue);
+    if (this.modoEdicion && this.idEdicionActual) {
+      await this.servicioTickets.actualizarTicket(this.idEdicionActual, valoresFormulario);
     } else {
-      // 🚨 Check if ticket number already exists for this user
-      const existing = await this.ticketService.getTicketByNumber(formValue.ticketNumber);
-      if (existing) {
-        await this.dialogService.alert({
-          title: 'Ticket Duplicado',
-          message: `Atención: Ya existe un ticket con el número ${formValue.ticketNumber}. Si deseas modificarlo, búscalo en la lista y selecciona editar.`,
-          type: 'danger'
+      // 🚨 Validar que el número de ticket no exista para este usuario
+      const ticketExistente = await this.servicioTickets.obtenerTicketPorNumero(valoresFormulario.numeroTicket);
+      if (ticketExistente) {
+        await this.servicioDialogo.alerta({
+          titulo: 'Ticket Duplicado',
+          mensaje: `Atención: Ya existe un ticket con el número ${valoresFormulario.numeroTicket}. Si deseas modificarlo, búscalo en la lista y selecciona editar.`,
+          tipo: 'danger'
         });
         return;
       }
-      await this.ticketService.addTicket(formValue as Ticket);
+      await this.servicioTickets.agregarTicket(valoresFormulario as Ticket);
     }
 
-    this.closeModal();
-    this.loadTickets();
+    this.cerrarModal();
+    this.cargarTickets();
   }
 
-  async deleteTicket(id?: string) {
+  /**
+   * Elimina un ticket previa confirmación del usuario.
+   *
+   * @param id - Identificador del ticket a eliminar.
+   */
+  async eliminarTicket(id?: string) {
     if (id) {
-      const confirmed = await this.dialogService.confirm({
-        title: 'Eliminar Ticket',
-        message: '¿Estás seguro de eliminar este ticket?',
-        type: 'danger',
-        confirmText: 'Eliminar'
+      const confirmado = await this.servicioDialogo.confirmar({
+        titulo: 'Eliminar Ticket',
+        mensaje: '¿Estás seguro de eliminar este ticket?',
+        tipo: 'danger',
+        textoConfirmar: 'Eliminar'
       });
-      if (confirmed) {
-        await this.ticketService.deleteTicket(id);
-        this.loadTickets();
+      if (confirmado) {
+        await this.servicioTickets.eliminarTicket(id);
+        this.cargarTickets();
       }
     }
   }
 
-  async downloadTemplateWithLoader() {
-    this.dialogService.showLoader('Generando plantilla de importación...');
+  /**
+   * Descarga la plantilla de importación de tickets mostrando el cargador
+   * global durante el proceso. Aplica un pequeño retardo para que el cargador
+   * sea visible incluso si la generación es instantánea.
+   */
+  async descargarPlantillaConCargador() {
+    this.servicioDialogo.mostrarCargador('Generando plantilla de importación...');
     try {
-      await this.ticketService.downloadTemplate();
-      // Small delay to show the loader
-      await new Promise(r => setTimeout(r, 800));
+      await this.servicioTickets.descargarPlantilla();
+      // Pequeño retardo para que el cargador alcance a verse
+      await new Promise(resolver => setTimeout(resolver, 800));
     } finally {
-      this.dialogService.hideLoader();
+      this.servicioDialogo.ocultarCargador();
     }
   }
 
-  async exportCurrentWeek() {
-    this.dialogService.showLoader(`Exportando tickets de la Semana ${this.selectedWeek}...`);
+  /**
+   * Exporta a Excel únicamente los tickets de la semana actualmente seleccionada.
+   */
+  async exportarSemanaActual() {
+    this.servicioDialogo.mostrarCargador(`Exportando tickets de la Semana ${this.semanaSeleccionada}...`);
     try {
-      await this.ticketService.exportToExcel(this.selectedWeek);
-      await new Promise(r => setTimeout(r, 800));
+      await this.servicioTickets.exportarAExcel(this.semanaSeleccionada);
+      await new Promise(resolver => setTimeout(resolver, 800));
     } finally {
-      this.dialogService.hideLoader();
+      this.servicioDialogo.ocultarCargador();
     }
   }
 
-  async exportAll() {
-    this.dialogService.showLoader('Exportando todo el historial de tickets...');
+  /**
+   * Exporta a Excel el historial completo de tickets sin filtro de semana.
+   */
+  async exportarTodo() {
+    this.servicioDialogo.mostrarCargador('Exportando todo el historial de tickets...');
     try {
-      await this.ticketService.exportToExcel();
-      await new Promise(r => setTimeout(r, 800));
+      await this.servicioTickets.exportarAExcel();
+      await new Promise(resolver => setTimeout(resolver, 800));
     } finally {
-      this.dialogService.hideLoader();
+      this.servicioDialogo.ocultarCargador();
     }
   }
 
-  async onFileChange(event: any) {
-    const file = event.target.files[0];
-    if (file) {
-      this.dialogService.showLoader('Importando tickets desde Excel...');
+  /**
+   * Maneja la selección de un archivo Excel para importación masiva de tickets.
+   *
+   * Procesa el archivo, recarga los tickets y muestra un resumen con la
+   * cantidad de tickets agregados y omitidos (duplicados). Si ocurre un
+   * error durante la importación, lo muestra en un diálogo de error.
+   *
+   * @param evento - Evento `change` del input file con el archivo seleccionado.
+   */
+  async alCambiarArchivo(evento: any) {
+    const archivo = evento.target.files[0];
+    if (archivo) {
+      this.servicioDialogo.mostrarCargador('Importando tickets desde Excel...');
       try {
-        const result = await this.ticketService.importFromExcel(file);
-        this.dialogService.hideLoader();
-        this.loadTickets();
-        
-        let message = `Proceso finalizado.\n- Nuevos: ${result.added}`;
-        if (result.skipped > 0) {
-          message += `\n- Omitidos (ya existen): ${result.skipped}`;
+        const resultado = await this.servicioTickets.importarDesdeExcel(archivo);
+        this.servicioDialogo.ocultarCargador();
+        this.cargarTickets();
+
+        let mensaje = `Proceso finalizado.\n- Nuevos: ${resultado.agregados}`;
+        if (resultado.omitidos > 0) {
+          mensaje += `\n- Omitidos (ya existen): ${resultado.omitidos}`;
         }
 
-        await this.dialogService.alert({
-          title: 'Resumen de Importación',
-          message: message,
-          type: 'success'
+        await this.servicioDialogo.alerta({
+          titulo: 'Resumen de Importación',
+          mensaje: mensaje,
+          tipo: 'success'
         });
-      } catch (err: any) {
-        this.dialogService.hideLoader();
-        await this.dialogService.alert({
-          title: 'Error de Importación',
-          message: err.message || 'Error desconocido',
-          type: 'danger'
+      } catch (error: any) {
+        this.servicioDialogo.ocultarCargador();
+        await this.servicioDialogo.alerta({
+          titulo: 'Error de Importación',
+          mensaje: error.message || 'Error desconocido',
+          tipo: 'danger'
         });
       }
-      // Reset input file
-      event.target.value = null;
+      // Reiniciar el input para permitir volver a seleccionar el mismo archivo
+      evento.target.value = null;
     }
   }
 }

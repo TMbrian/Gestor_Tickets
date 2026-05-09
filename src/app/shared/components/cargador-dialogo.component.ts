@@ -1,20 +1,29 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DialogService, LoaderState } from '../../core/services/dialogo.service';
+import { ServicioDialogo, EstadoCargador } from '../../core/services/dialogo.service';
 import { Subscription } from 'rxjs';
 
+/**
+ * Componente del cargador global de la aplicación.
+ *
+ * Renderiza una capa superpuesta a pantalla completa con un spinner animado,
+ * un mensaje contextual y una barra de progreso indeterminada. Se controla
+ * de forma reactiva escuchando el observable `estadoCargador$` del
+ * `ServicioDialogo`, de modo que cualquier parte de la aplicación puede
+ * mostrarlo u ocultarlo invocando `mostrarCargador(...)` u `ocultarCargador()`.
+ */
 @Component({
   selector: 'app-loader-dialog',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="loader-overlay" *ngIf="state.visible" @fadeInOut>
+    <div class="loader-overlay" *ngIf="estado.visible" @fadeInOut>
       <div class="loader-card shadow-lg rounded-4 p-5 text-center">
         <div class="spinner-wrapper mb-4">
           <div class="spinner-ring"></div>
           <i class="bi bi-cloud-arrow-up-fill spinner-icon text-primary"></i>
         </div>
-        <h5 class="fw-bold text-body-emphasis mb-2">{{ state.message }}</h5>
+        <h5 class="fw-bold text-body-emphasis mb-2">{{ estado.mensaje }}</h5>
         <p class="text-muted small mb-0">Por favor espera un momento...</p>
         <div class="progress-bar-wrapper mt-4">
           <div class="progress-bar-animated"></div>
@@ -105,18 +114,37 @@ import { Subscription } from 'rxjs';
   `]
 })
 export class LoaderDialogComponent implements OnInit, OnDestroy {
-  state: LoaderState = { visible: false, message: '' };
-  private subscription!: Subscription;
+  /** Estado actual del cargador: visibilidad y mensaje a mostrar */
+  estado: EstadoCargador = { visible: false, mensaje: '' };
 
-  constructor(private dialogService: DialogService) {}
+  /** Suscripción al observable del cargador, liberada al destruir el componente */
+  private suscripcion!: Subscription;
 
+  /**
+   * Constructor del componente.
+   *
+   * @param servicioDialogo - Servicio centralizado de diálogos del que se
+   *                          escucha el estado del cargador global.
+   */
+  constructor(private servicioDialogo: ServicioDialogo) { }
+
+  /**
+   * Hook de ciclo de vida que se suscribe al observable `estadoCargador$`.
+   *
+   * Cada nueva emisión actualiza el estado local del componente, provocando
+   * la re-renderización de la capa superpuesta.
+   */
   ngOnInit() {
-    this.subscription = this.dialogService.loaderState$.subscribe(s => {
-      this.state = s;
+    this.suscripcion = this.servicioDialogo.estadoCargador$.subscribe(nuevoEstado => {
+      this.estado = nuevoEstado;
     });
   }
 
+  /**
+   * Hook de ciclo de vida que limpia la suscripción al destruir el componente
+   * para prevenir fugas de memoria.
+   */
   ngOnDestroy() {
-    this.subscription.unsubscribe();
+    this.suscripcion.unsubscribe();
   }
 }

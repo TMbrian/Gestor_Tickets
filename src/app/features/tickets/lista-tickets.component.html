@@ -9,11 +9,11 @@
 
   <div class="col-12">
     <div class="d-flex flex-wrap gap-3 align-items-center">
-      <input type="file" id="fileImport" class="d-none" (change)="onFileChange($event)" accept=".xlsx, .xls">
+      <input type="file" id="fileImport" class="d-none" (change)="alCambiarArchivo($event)" accept=".xlsx, .xls">
 
-      <!-- Group: Import/Template -->
+      <!-- Grupo: Importar / Plantilla -->
       <div class="btn-group shadow-sm rounded-pill overflow-hidden border">
-        <button class="btn btn-white bg-body px-4 py-2 fw-semibold border-0" (click)="downloadTemplateWithLoader()"
+        <button class="btn btn-white bg-body px-4 py-2 fw-semibold border-0" (click)="descargarPlantillaConCargador()"
           title="Bajar Formato Excel">
           <i class="bi bi-download me-1"></i> Plantilla
         </button>
@@ -23,30 +23,32 @@
         </button>
       </div>
 
-      <!-- Export Dropdown -->
+      <!-- Menú desplegable de Exportación -->
       <div class="dropdown">
-        <button class="btn btn-success fw-bold px-4 py-2 rounded-pill shadow-sm dropdown-toggle" 
+        <button class="btn btn-success fw-bold px-4 py-2 rounded-pill shadow-sm dropdown-toggle"
           data-bs-toggle="dropdown" aria-expanded="false">
           <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>
           Exportar a Excel
         </button>
         <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2">
           <li>
-            <button class="dropdown-item py-2 px-4" (click)="exportCurrentWeek()">
-              <i class="bi bi-calendar-week me-2 text-primary"></i> Semana Actual (W{{ selectedWeek }})
+            <button class="dropdown-item py-2 px-4" (click)="exportarSemanaActual()">
+              <i class="bi bi-calendar-week me-2 text-primary"></i> Semana Actual (W{{ semanaSeleccionada }})
             </button>
           </li>
-          <li><hr class="dropdown-divider"></li>
           <li>
-            <button class="dropdown-item py-2 px-4" (click)="exportAll()">
+            <hr class="dropdown-divider">
+          </li>
+          <li>
+            <button class="dropdown-item py-2 px-4" (click)="exportarTodo()">
               <i class="bi bi-collection me-2 text-success"></i> Todo el Historial
             </button>
           </li>
         </ul>
       </div>
 
-      <button class="btn btn-primary fw-bold px-5 py-2 shadow-sm rounded-pill ms-lg-auto" *ngIf="auth.isAdmin"
-        (click)="openModal()">
+      <button class="btn btn-primary fw-bold px-5 py-2 shadow-sm rounded-pill ms-lg-auto" *ngIf="auth.esAdmin"
+        (click)="abrirModal()">
         <i class="bi bi-plus-lg me-1"></i> Nuevo Ticket
       </button>
     </div>
@@ -60,32 +62,34 @@
         <div class="input-group flex-nowrap rounded-3 overflow-hidden border">
           <span class="input-group-text bg-body-tertiary border-0"><i class="bi bi-search text-muted"></i></span>
           <input type="text" class="form-control border-0 bg-body-tertiary"
-            placeholder="Buscar en todas las columnas..." [(ngModel)]="searchText" (ngModelChange)="applyFilters()">
+            placeholder="Buscar en todas las columnas..." [(ngModel)]="textoBusqueda"
+            (ngModelChange)="aplicarFiltros()">
         </div>
       </div>
       <div class="col-md-4">
         <div class="d-flex align-items-center justify-content-center bg-body-tertiary border rounded-3 p-1 shadow-sm">
-          <button class="btn btn-sm btn-light border-0 rounded-2" (click)="previousWeek()" title="Semana Anterior">
+          <button class="btn btn-sm btn-light border-0 rounded-2" (click)="semanaAnterior()" title="Semana Anterior">
             <i class="bi bi-chevron-left"></i>
           </button>
           <div class="flex-grow-1 text-center px-2">
             <span class="fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Semana {{
-              selectedWeek }}</span>
-            <span *ngIf="selectedWeek === currentWeek" class="badge bg-primary ms-2"
+              semanaSeleccionada }}</span>
+            <span *ngIf="semanaSeleccionada === semanaActual" class="badge bg-primary ms-2"
               style="font-size: 0.6rem;">ACTUAL</span>
           </div>
-          <button class="btn btn-sm btn-light border-0 rounded-2" (click)="nextWeek()" title="Semana Siguiente">
+          <button class="btn btn-sm btn-light border-0 rounded-2" (click)="semanaSiguiente()" title="Semana Siguiente">
             <i class="bi bi-chevron-right"></i>
           </button>
-          <button *ngIf="selectedWeek !== currentWeek" class="btn btn-sm btn-link text-decoration-none fw-bold p-1 ms-1"
-            (click)="goToCurrentWeek()" style="font-size: 0.75rem;">
+          <button *ngIf="semanaSeleccionada !== semanaActual"
+            class="btn btn-sm btn-link text-decoration-none fw-bold p-1 ms-1" (click)="irASemanaActual()"
+            style="font-size: 0.75rem;">
             Hoy
           </button>
         </div>
       </div>
       <div class="col-md-3 ms-auto">
         <select class="form-select bg-body-tertiary border text-secondary fw-medium rounded-3"
-          [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
+          [(ngModel)]="filtroEstado" (ngModelChange)="aplicarFiltros()">
           <option value="">Todos los Estados</option>
           <option value="Abierto">Abierto</option>
           <option value="En Progreso">En Progreso</option>
@@ -106,48 +110,50 @@
             <th class="py-3 font-monospace">CEDI / SITIO</th>
             <th class="py-3 font-monospace">ÁREA AFECTADA</th>
             <th class="py-3 font-monospace">ESTADO</th>
-            <th *ngIf="auth.isAdmin" class="text-end pe-3 py-3 font-monospace">ACCIONES</th>
+            <th *ngIf="auth.esAdmin" class="text-end pe-3 py-3 font-monospace">ACCIONES</th>
           </tr>
         </thead>
         <tbody class="border-top-0">
-          <tr *ngFor="let t of filteredTickets" (dblclick)="auth.isAdmin && openModal(t)" style="cursor: pointer;"
-            [ngClass]="{'opacity-75': t.status === 'Cerrado'}">
-            <td class="ps-3 text-primary fw-bold font-monospace">{{ t.ticketNumber }}</td>
-            <td><span class="badge bg-secondary-subtle text-secondary border">W{{ t.week }}</span></td>
+          <tr *ngFor="let ticket of ticketsFiltrados" (dblclick)="auth.esAdmin && abrirModal(ticket)"
+            style="cursor: pointer;" [ngClass]="{'opacity-75': ticket.estado === 'Cerrado'}">
+            <td class="ps-3 text-primary fw-bold font-monospace">{{ ticket.numeroTicket }}</td>
+            <td><span class="badge bg-secondary-subtle text-secondary border">W{{ ticket.semana }}</span></td>
             <td>
-              <div class="fw-medium text-body-emphasis">{{ t.assignmentDate }}</div>
-              <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ t.assignmentTime }}</small>
+              <div class="fw-medium text-body-emphasis">{{ ticket.fechaAsignacion }}</div>
+              <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ ticket.horaAsignacion }}</small>
             </td>
             <td>
-              <div class="fw-medium text-body-emphasis" *ngIf="t.closeDate">{{ t.closeDate }}</div>
-              <small class="text-muted" *ngIf="t.closeTime"><i class="bi bi-clock me-1"></i>{{ t.closeTime }}</small>
-              <span class="badge bg-body-secondary text-secondary border" *ngIf="!t.closeDate">En proceso</span>
+              <div class="fw-medium text-body-emphasis" *ngIf="ticket.fechaCierre">{{ ticket.fechaCierre }}</div>
+              <small class="text-muted" *ngIf="ticket.horaCierre"><i class="bi bi-clock me-1"></i>{{ ticket.horaCierre
+                }}</small>
+              <span class="badge bg-body-secondary text-secondary border" *ngIf="!ticket.fechaCierre">En proceso</span>
             </td>
             <td>
               <span class="badge px-3 py-2"
-                [ngClass]="{'bg-success-subtle text-success border border-success': t.solutionTimeMins !== null && t.solutionTimeMins !== undefined, 'bg-warning-subtle text-warning border border-warning': t.solutionTimeMins === null || t.solutionTimeMins === undefined}">
-                {{ (t.solutionTimeMins !== null && t.solutionTimeMins !== undefined) ? (t.solutionTimeMins /
+                [ngClass]="{'bg-success-subtle text-success border border-success': ticket.tiempoSolucionMins !== null && ticket.tiempoSolucionMins !== undefined, 'bg-warning-subtle text-warning border border-warning': ticket.tiempoSolucionMins === null || ticket.tiempoSolucionMins === undefined}">
+                {{ (ticket.tiempoSolucionMins !== null && ticket.tiempoSolucionMins !== undefined) ?
+                (ticket.tiempoSolucionMins /
                 60).toFixed(1) + 'h' : '--' }}
               </span>
             </td>
-            <td class="fw-medium">{{ t.site }}</td>
-            <td class="text-secondary">{{ t.affectedArea }}</td>
+            <td class="fw-medium">{{ ticket.sitio }}</td>
+            <td class="text-secondary">{{ ticket.areaAfectada }}</td>
             <td>
               <span class="badge px-3 py-2 rounded-pill shadow-sm" [ngClass]="{
-                 'bg-danger': t.status === 'Abierto',
-                 'bg-warning text-dark': t.status === 'En Progreso',
-                 'bg-success': t.status === 'Cerrado'
-              }">{{ t.status }}</span>
+                 'bg-danger': ticket.estado === 'Abierto',
+                 'bg-warning text-dark': ticket.estado === 'En Progreso',
+                 'bg-success': ticket.estado === 'Cerrado'
+              }">{{ ticket.estado }}</span>
             </td>
-            <td *ngIf="auth.isAdmin" class="text-end pe-3">
+            <td *ngIf="auth.esAdmin" class="text-end pe-3">
               <button class="btn btn-sm btn-light border shadow-sm me-2 text-primary rounded-circle"
-                (click)="openModal(t)" title="Editar"><i class="bi bi-pencil-square"></i></button>
+                (click)="abrirModal(ticket)" title="Editar"><i class="bi bi-pencil-square"></i></button>
               <button class="btn btn-sm btn-light border shadow-sm text-danger rounded-circle"
-                (click)="deleteTicket(t.id)" title="Eliminar"><i class="bi bi-trash"></i></button>
+                (click)="eliminarTicket(ticket.id)" title="Eliminar"><i class="bi bi-trash"></i></button>
             </td>
           </tr>
-          <tr *ngIf="filteredTickets.length === 0">
-            <td [attr.colspan]="auth.isAdmin ? 9 : 8" class="text-center py-5 text-muted">
+          <tr *ngIf="ticketsFiltrados.length === 0">
+            <td [attr.colspan]="auth.esAdmin ? 9 : 8" class="text-center py-5 text-muted">
               <i class="bi bi-folder2-open fs-1 d-block mb-3 opacity-50"></i>
               <h5 class="fw-bold">No se encontraron tickets</h5>
               <p class="mb-0">Ajusta los filtros de búsqueda o importa un archivo Excel.</p>
@@ -157,26 +163,26 @@
       </table>
     </div>
     <div class="d-flex justify-content-between mt-4 text-muted small fw-medium">
-      <div>Mostrando {{ filteredTickets.length }} tickets sincronizados en la nube.</div>
-      <div *ngIf="auth.isAdmin"><i class="bi bi-mouse me-1"></i> Doble click en una fila para editar</div>
+      <div>Mostrando {{ ticketsFiltrados.length }} tickets sincronizados en la nube.</div>
+      <div *ngIf="auth.esAdmin"><i class="bi bi-mouse me-1"></i> Doble click en una fila para editar</div>
     </div>
   </div>
 </div>
 
-<!-- Modal Formulario -->
+<!-- Modal del Formulario de Tickets -->
 <div class="modal fade" #ticketModal tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
       <div class="modal-header bg-primary bg-gradient text-white px-4 py-3 border-bottom-0">
         <h4 class="modal-title fw-bold mb-0">
-          <i class="bi" [ngClass]="isEditing ? 'bi-pencil-square me-2' : 'bi-plus-circle me-2'"></i>
-          {{ isEditing ? 'Modificar Ticket: ' + ticketForm.get('ticketNumber')?.value : 'Crear Nuevo Ticket' }}
+          <i class="bi" [ngClass]="modoEdicion ? 'bi-pencil-square me-2' : 'bi-plus-circle me-2'"></i>
+          {{ modoEdicion ? 'Modificar Ticket: ' + formularioTicket.get('numeroTicket')?.value : 'Crear Nuevo Ticket' }}
         </h4>
-        <button type="button" class="btn-close btn-close-white shadow-sm" (click)="closeModal()"></button>
+        <button type="button" class="btn-close btn-close-white shadow-sm" (click)="cerrarModal()"></button>
       </div>
 
       <div class="modal-body p-4 bg-body-tertiary">
-        <form [formGroup]="ticketForm" (ngSubmit)="saveTicket()">
+        <form [formGroup]="formularioTicket" (ngSubmit)="guardarTicket()">
           <div class="accordion" id="ticketAccordion">
 
             <!-- SECCION 1 -->
@@ -192,24 +198,24 @@
                   <div class="row g-3">
                     <div class="col-md-3">
                       <label class="form-label fw-semibold">Número de Ticket*</label>
-                      <input type="text" class="form-control bg-body" formControlName="ticketNumber"
+                      <input type="text" class="form-control bg-body" formControlName="numeroTicket"
                         placeholder="Numero De Ticket"
-                        [ngClass]="{'is-invalid': ticketForm.get('ticketNumber')?.touched && ticketForm.get('ticketNumber')?.invalid}">
+                        [ngClass]="{'is-invalid': formularioTicket.get('numeroTicket')?.touched && formularioTicket.get('numeroTicket')?.invalid}">
                       <div class="invalid-feedback">Solo se permiten números.</div>
                     </div>
                     <div class="col-md-3">
                       <label class="form-label fw-semibold">Semana*</label>
-                      <input type="number" class="form-control bg-body" formControlName="week" readonly>
+                      <input type="number" class="form-control bg-body" formControlName="semana" readonly>
                     </div>
                     <div class="col-md-3">
                       <label class="form-label fw-semibold">Fecha de Asignación*</label>
-                      <input type="date" class="form-control bg-body" formControlName="assignmentDate"
+                      <input type="date" class="form-control bg-body" formControlName="fechaAsignacion"
                         (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()"
                         (paste)="$event.preventDefault()">
                     </div>
                     <div class="col-md-3">
                       <label class="form-label fw-semibold">Hora de Asignación*</label>
-                      <input type="time" class="form-control bg-body" formControlName="assignmentTime"
+                      <input type="time" class="form-control bg-body" formControlName="horaAsignacion"
                         (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()"
                         (paste)="$event.preventDefault()">
                     </div>
@@ -232,13 +238,13 @@
                   <div class="row g-3">
                     <div class="col-md-6">
                       <label class="form-label fw-semibold">Fecha de Cierre</label>
-                      <input type="date" class="form-control bg-body" formControlName="closeDate"
+                      <input type="date" class="form-control bg-body" formControlName="fechaCierre"
                         (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()"
                         (paste)="$event.preventDefault()">
                     </div>
                     <div class="col-md-6">
                       <label class="form-label fw-semibold">Hora de Cierre</label>
-                      <input type="time" class="form-control bg-body" formControlName="closeTime"
+                      <input type="time" class="form-control bg-body" formControlName="horaCierre"
                         (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()"
                         (paste)="$event.preventDefault()">
                     </div>
@@ -261,36 +267,36 @@
                   <div class="row g-3 align-items-center">
                     <div class="col-md-6">
                       <label class="form-label fw-semibold">CEDI / Sitio*</label>
-                      <select class="form-select bg-body" formControlName="site">
+                      <select class="form-select bg-body" formControlName="sitio">
                         <option value="" disabled>Selecciona un sitio</option>
-                        <option *ngFor="let s of sites" [value]="s.name">{{ s.name }}</option>
+                        <option *ngFor="let sitio of sitios" [value]="sitio.nombre">{{ sitio.nombre }}</option>
                       </select>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label fw-semibold">Área Afectada*</label>
-                      <select class="form-select bg-body" formControlName="affectedArea">
+                      <select class="form-select bg-body" formControlName="areaAfectada">
                         <option value="" disabled>Selecciona un área</option>
-                        <option *ngFor="let a of areas" [value]="a.name">{{ a.name }}</option>
+                        <option *ngFor="let area of areas" [value]="area.nombre">{{ area.nombre }}</option>
                       </select>
                     </div>
 
                     <div class="col-md-12">
                       <label class="form-label fw-semibold">Descripción del Problema*</label>
-                      <textarea class="form-control bg-body" rows="3" formControlName="description"
+                      <textarea class="form-control bg-body" rows="3" formControlName="descripcion"
                         placeholder="Detalla el problema exhaustivamente..."></textarea>
                     </div>
 
                     <div class="col-12 pt-2 mb-2">
                       <label class="form-label fw-semibold d-block mb-3">Estado de Proceso*</label>
                       <div class="btn-group w-100 shadow-sm d-flex" role="group">
-                        <input type="radio" class="btn-check" formControlName="status" value="Abierto" id="btnradio1">
+                        <input type="radio" class="btn-check" formControlName="estado" value="Abierto" id="btnradio1">
                         <label class="btn btn-outline-danger flex-fill" for="btnradio1">Abierto</label>
 
-                        <input type="radio" class="btn-check" formControlName="status" value="En Progreso"
+                        <input type="radio" class="btn-check" formControlName="estado" value="En Progreso"
                           id="btnradio2">
                         <label class="btn btn-outline-warning flex-fill" for="btnradio2">En Progreso</label>
 
-                        <input type="radio" class="btn-check" formControlName="status" value="Cerrado" id="btnradio3">
+                        <input type="radio" class="btn-check" formControlName="estado" value="Cerrado" id="btnradio3">
                         <label class="btn btn-outline-success flex-fill" for="btnradio3">Cerrado</label>
                       </div>
                     </div>
@@ -299,7 +305,7 @@
                       <label class="form-label fw-semibold mb-3">Ticket Asignado Oficialmente</label>
                       <div class="d-flex align-items-center rounded bg-body p-2 border h-100" style="max-height: 48px;">
                         <input class="form-check-input ms-0 me-3 mt-0 fs-4" type="checkbox" role="switch"
-                          formControlName="isAssigned">
+                          formControlName="estaAsignado">
                         <label class="form-check-label fw-medium mt-1 text-truncate">Marcar como SI asignado</label>
                       </div>
                     </div>
@@ -310,19 +316,19 @@
                         class="d-flex align-items-center rounded bg-danger bg-opacity-10 p-2 border border-danger h-100"
                         style="max-height: 48px;">
                         <input class="form-check-input ms-0 me-3 mt-0 fs-4" type="checkbox" role="switch"
-                          formControlName="isRfc">
+                          formControlName="esRfc">
                         <label class="form-check-label fw-bold text-danger mt-1 text-truncate">Habilitar RFC
                           Emergente</label>
                       </div>
                     </div>
 
-                    <div class="col-md-12 pt-2" *ngIf="ticketForm.get('isRfc')?.value">
+                    <div class="col-md-12 pt-2" *ngIf="formularioTicket.get('esRfc')?.value">
                       <div class="alert alert-danger d-flex align-items-center mb-0 shadow-sm p-3 border-0 rounded-3">
                         <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
                         <div class="flex-grow-1">
                           <label class="form-label fw-bold mb-1">Número de Autorización RFC</label>
                           <input type="text" class="form-control font-monospace border-0 shadow-sm"
-                            formControlName="rfcNumber" placeholder="EJ-RFC-123445">
+                            formControlName="numeroRfc" placeholder="EJ-RFC-123445">
                         </div>
                       </div>
                     </div>
@@ -336,11 +342,12 @@
 
           <div class="d-flex justify-content-between mt-4">
             <button type="button" class="btn btn-danger fw-bold px-4 rounded-pill shadow-sm"
-              (click)="closeModal()">Cancelar</button>
+              (click)="cerrarModal()">Cancelar</button>
             <button type="button"
               class="btn btn-primary fw-bold px-5 py-2 shadow rounded-pill d-inline-flex align-items-center justify-content-center gap-2"
-              [disabled]="ticketForm.invalid" (click)="saveTicket()">
-              <i class="bi bi-cloud-arrow-up-fill fs-5"></i> <span>{{ isEditing ? 'Confirmar y Actualizar' : 'Guardar y
+              [disabled]="formularioTicket.invalid" (click)="guardarTicket()">
+              <i class="bi bi-cloud-arrow-up-fill fs-5"></i> <span>{{ modoEdicion ? 'Confirmar y Actualizar' : 'Guardar
+                y
                 Finalizar' }}</span>
             </button>
           </div>

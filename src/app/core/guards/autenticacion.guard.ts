@@ -1,20 +1,42 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from '../services/autenticacion.service';
-import { filter, map, switchMap, take } from 'rxjs/operators';
+import { ServicioAutenticacion } from '../services';
+import { filter, map, take } from 'rxjs/operators';
 
-export const authGuard: CanActivateFn = (route, state) => {
-  const authService = inject(AuthService);
-  const router = inject(Router);
-  
-  return authService.isInitialized$.pipe(
-    filter(initialized => initialized),
+/**
+ * Guard de autenticación para proteger rutas privadas de la aplicación.
+ *
+ * Espera a que el servicio de autenticación esté completamente inicializado
+ * antes de evaluar si el usuario tiene acceso a la ruta solicitada.
+ * Si el usuario no está autenticado, redirige al inicio de sesión.
+ *
+ * @param rutaActiva - Información de la ruta que se intenta activar.
+ * @param estadoRuta - Estado del enrutador con la URL destino.
+ * @returns Observable<boolean> que emite `true` si el acceso está permitido,
+ *          o `false` si el usuario es redirigido al login.
+ */
+export const guardAutenticacion: CanActivateFn = (rutaActiva, estadoRuta) => {
+  /** Servicio de autenticación que gestiona el estado de sesión del usuario */
+  const servicioAutenticacion = inject(ServicioAutenticacion);
+
+  /** Servicio de enrutamiento para redirigir al login si es necesario */
+  const enrutador = inject(Router);
+
+  return servicioAutenticacion.estaInicializado$.pipe(
+    // Espera hasta que la inicialización del servicio esté completa
+    filter(estaInicializado => estaInicializado),
+
+    // Solo se evalúa una vez para evitar suscripciones persistentes
     take(1),
+
     map(() => {
-      if (authService.currentUser) {
+      if (servicioAutenticacion.usuarioActual) {
+        // El usuario tiene sesión activa, se permite el acceso a la ruta
         return true;
       }
-      router.navigate(['/login']);
+
+      // No hay sesión activa, se redirige al inicio de sesión
+      enrutador.navigate(['/login']);
       return false;
     })
   );
