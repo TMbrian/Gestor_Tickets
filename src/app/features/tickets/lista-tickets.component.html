@@ -59,11 +59,16 @@
   <div class="card-body p-4 p-md-5">
     <div class="row mb-4 g-3 align-items-center">
       <div class="col-md-4">
-        <div class="input-group flex-nowrap rounded-3 overflow-hidden border">
-          <span class="input-group-text bg-body-tertiary border-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" class="form-control border-0 bg-body-tertiary"
-            placeholder="Buscar en todas las columnas..." [(ngModel)]="textoBusqueda"
-            (ngModelChange)="aplicarFiltros()">
+        <div class="position-relative">
+          <div class="input-group flex-nowrap rounded-3 overflow-hidden border">
+            <span class="input-group-text bg-body-tertiary border-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-0 bg-body-tertiary pe-5"
+              placeholder="Buscar por #, descripción, sitio..." [(ngModel)]="textoBusqueda"
+              (ngModelChange)="aplicarFiltros()" maxlength="50">
+          </div>
+          <span class="position-absolute end-0 top-50 translate-middle-y me-2 small opacity-50 fw-medium contador-flotante" style="font-size: 0.6rem;">
+            {{ textoBusqueda.length }}/50
+          </span>
         </div>
       </div>
       <div class="col-md-4">
@@ -93,6 +98,7 @@
           <option value="">Todos los Estados</option>
           <option value="Abierto">Abierto</option>
           <option value="En Progreso">En Progreso</option>
+          <option value="Pausado">Pausado</option>
           <option value="Cerrado">Cerrado</option>
         </select>
       </div>
@@ -276,14 +282,14 @@
                     <div class="col-md-6">
                       <label for="sitioTicket" class="form-label fw-semibold">CEDI / Sitio*</label>
                       <select id="sitioTicket" class="form-select bg-body" formControlName="sitio">
-                        <option value="" disabled>Selecciona un sitio</option>
+                        <option value="" disabled selected>Selecciona un CEDI/Sitio...</option>
                         <option *ngFor="let sitio of sitios" [value]="sitio.nombre">{{ sitio.nombre }}</option>
                       </select>
                     </div>
                     <div class="col-md-6">
                       <label for="areaTicket" class="form-label fw-semibold">Área Afectada*</label>
                       <select id="areaTicket" class="form-select bg-body" formControlName="areaAfectada">
-                        <option value="" disabled>Selecciona un área</option>
+                        <option value="" disabled selected>Selecciona un Área Afectada...</option>
                         <option *ngFor="let area of areas" [value]="area.nombre">{{ area.nombre }}</option>
                       </select>
                     </div>
@@ -348,7 +354,7 @@
                           <label for="numRfcAuth" class="form-label fw-bold mb-1">Número de Autorización RFC</label>
                           <div class="position-relative">
                             <input type="text" id="numRfcAuth" class="form-control font-monospace border-0 shadow-sm pe-5"
-                              formControlName="numeroRfc" placeholder="EJ-RFC-123445" maxlength="30">
+                              formControlName="numeroRfc" placeholder="Ej: RFC-2026-001" maxlength="30">
                             <span class="position-absolute end-0 bottom-0 mb-2 me-2 small fw-medium contador-flotante" style="color: rgba(0,0,0,0.5);">
                               {{ formularioTicket.get('numeroRfc')?.value?.length || 0 }}/30
                             </span>
