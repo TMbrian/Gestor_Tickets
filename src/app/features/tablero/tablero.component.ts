@@ -141,12 +141,12 @@ import Chart from 'chart.js/auto';
               </thead>
               <tbody class="border-top-0">
                 <tr *ngFor="let ticket of ticketsRecientes">
-                  <td class="px-3 py-3"><span class="text-primary fw-bold font-monospace">{{ ticket.ticketNumber }}</span></td>
-                  <td>{{ ticket.affectedArea }}</td>
-                  <td><span class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ ticket.site }}</span></td>
-                  <td>{{ ticket.assignmentDate }}</td>
+                  <td class="px-3 py-3"><span class="text-primary fw-bold font-monospace">{{ ticket.numeroTicket }}</span></td>
+                  <td>{{ ticket.areaAfectada }}</td>
+                  <td><span class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ ticket.sitio }}</span></td>
+                  <td>{{ ticket.fechaAsignacion }}</td>
                   <td>
-                    <span class="badge rounded-pill px-3 py-2" [ngClass]="{'bg-danger': ticket.status === 'Abierto', 'bg-warning text-dark': ticket.status === 'En Progreso', 'bg-success': ticket.status === 'Cerrado'}">{{ticket.status}}</span>
+                    <span class="badge rounded-pill px-3 py-2" [ngClass]="{'bg-danger': ticket.estado === 'Abierto', 'bg-warning text-dark': ticket.estado === 'En Progreso', 'bg-success': ticket.estado === 'Cerrado'}">{{ticket.estado}}</span>
                   </td>
                 </tr>
               </tbody>
@@ -329,13 +329,13 @@ export class DashboardComponent implements OnInit {
       }
 
       // Filtrar únicamente tickets cerrados con fecha de asignación válida
-      const ticketsCerrados = tickets.filter(t => t.status === 'Cerrado' && t.assignmentDate);
+      const ticketsCerrados = tickets.filter(t => t.estado === 'Cerrado' && t.fechaAsignacion);
 
       /** Acumulador de conteos y minutos totales por etiqueta de semana */
       const semanas: any = {};
 
       ticketsCerrados.forEach(ticket => {
-        const fechaAsignacion = new Date(ticket.assignmentDate!);
+        const fechaAsignacion = new Date(ticket.fechaAsignacion!);
         if (isNaN(fechaAsignacion.getTime())) return;
 
         // Calcular semana ISO de la fecha de asignación
@@ -352,7 +352,7 @@ export class DashboardComponent implements OnInit {
           semanas[etiqueta] = { count: 0, totalMins: 0 };
         }
         semanas[etiqueta].count += 1;
-        semanas[etiqueta].totalMins += (ticket.solutionTimeMins || 0);
+        semanas[etiqueta].totalMins += (ticket.tiempoSolucionMins || 0);
       });
 
       // Ordenar etiquetas cronológicamente: primero por año y luego por semana

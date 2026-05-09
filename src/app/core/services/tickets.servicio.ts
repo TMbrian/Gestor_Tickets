@@ -71,7 +71,30 @@ export class ServicioTickets {
       where('idUsuario', '==', this.idUsuarioActual)
     );
     const resultado = await getDocs(consulta);
-    return resultado.docs.map(documento => ({ id: documento.id, ...documento.data() } as any));
+    return resultado.docs.map(documento => {
+      const data = documento.data() as any;
+      // Normalización de datos antiguos (Inglés -> Español)
+      return {
+        id: documento.id,
+        numeroTicket: data.numeroTicket || data.ticketNumber || '',
+        semana: data.semana !== undefined ? data.semana : (data.week || 1),
+        fechaAsignacion: data.fechaAsignacion || data.assignmentDate || '',
+        horaAsignacion: data.horaAsignacion || data.assignmentTime || '',
+        fechaCierre: data.fechaCierre || data.closeDate || null,
+        horaCierre: data.horaCierre || data.closeTime || null,
+        tiempoSolucionMins: data.tiempoSolucionMins !== undefined ? data.tiempoSolucionMins : (data.solutionTimeMins || null),
+        estaAsignado: data.estaAsignado !== undefined ? data.estaAsignado : (data.isAssigned || false),
+        esRfc: data.esRfc !== undefined ? data.esRfc : (data.isRfc || false),
+        numeroRfc: data.numeroRfc || data.rfcNumber || null,
+        sitio: data.sitio || data.site || '',
+        areaAfectada: data.areaAfectada || data.affectedArea || '',
+        descripcion: data.descripcion || data.description || '',
+        estado: data.estado || data.status || 'Abierto',
+        idUsuario: data.idUsuario || '',
+        creadoEn: data.creadoEn || data.createdAt || Date.now(),
+        actualizadoEn: data.actualizadoEn || data.updatedAt || Date.now()
+      } as Ticket;
+    });
   }
 
   /**
