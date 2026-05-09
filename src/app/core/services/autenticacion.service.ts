@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Auth, authState, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail } from '@angular/fire/auth';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
-import { User, Role } from '../models/user.model';
+import { User, Role } from '../models/usuario.modelo';
 
 @Injectable({
   providedIn: 'root'

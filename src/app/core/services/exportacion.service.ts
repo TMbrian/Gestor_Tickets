@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as XLSX from 'xlsx';
-import { Ticket } from '../models/ticket.model';
+import { Ticket } from '../models/ticket.modelo';
 
 @Injectable({
   providedIn: 'root'

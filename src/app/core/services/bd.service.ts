@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
-import { Ticket } from '../models/ticket.model';
+import { Ticket } from '../models/ticket.modelo';
 
 @Injectable({
   providedIn: 'root'

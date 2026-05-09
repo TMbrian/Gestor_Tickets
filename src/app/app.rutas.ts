@@ -1,10 +1,10 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/guards/auth.guard';
-import { LoginComponent } from './features/auth/login.component';
-import { LayoutComponent } from './layout/layout.component';
-import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { TicketListComponent } from './features/tickets/ticket-list.component';
-import { SettingsComponent } from './features/settings/settings.component';
+import { authGuard } from './core/guards/autenticacion.guard';
+import { LoginComponent } from './features/autenticacion/login.component';
+import { LayoutComponent } from './diseno/diseno.component';
+import { DashboardComponent } from './features/tablero/tablero.component';
+import { TicketListComponent } from './features/tickets/lista-tickets.component';
+import { SettingsComponent } from './features/configuracion/configuracion.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },

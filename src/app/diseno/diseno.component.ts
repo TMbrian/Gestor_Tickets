@@ -1,13 +1,13 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { SidebarComponent } from './sidebar.component';
-import { NavbarComponent } from './navbar.component';
-import { ConfirmDialogComponent } from '../shared/components/confirm-dialog.component';
-import { PromptDialogComponent } from '../shared/components/prompt-dialog.component';
-import { LoaderDialogComponent } from '../shared/components/loader-dialog.component';
+import { SidebarComponent } from './barra-lateral.component';
+import { NavbarComponent } from './barra-navegacion.component';
+import { ConfirmDialogComponent } from '../shared/components/confirmar-dialogo.component';
+import { PromptDialogComponent } from '../shared/components/entrada-dialogo.component';
+import { LoaderDialogComponent } from '../shared/components/cargador-dialogo.component';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../core/services/auth.service';
+import { AuthService } from '../core/services/autenticacion.service';
 
 @Component({
   selector: 'app-layout',

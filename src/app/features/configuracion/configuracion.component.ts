@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CatalogService } from '../../core/services/catalog.service';
+import { CatalogService } from '../../core/services/catalogo.service';
 import { TicketService } from '../../core/services/ticket.service';
-import { Site, Area } from '../../core/models/ticket.model';
-import { DialogService } from '../../core/services/dialog.service';
+import { Site, Area } from '../../core/models/ticket.modelo';
+import { DialogService } from '../../core/services/dialogo.service';
 
 @Component({
   selector: 'app-settings',

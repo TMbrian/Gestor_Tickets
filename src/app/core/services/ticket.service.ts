@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Firestore, collection, collectionData, doc, docData, addDoc, updateDoc, deleteDoc, query, where, getDocs, orderBy, limit } from '@angular/fire/firestore';
-import { Ticket, TicketStatistics, TicketStatus } from '../models/ticket.model';
-import { AuthService } from './auth.service';
+import { Ticket, TicketStatistics, TicketStatus } from '../models/ticket.modelo';
+import { AuthService } from './autenticacion.service';
 import { Observable, firstValueFrom, map } from 'rxjs';
 import * as XLSX from 'xlsx';
 

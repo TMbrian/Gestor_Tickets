@@ -2,8 +2,8 @@ import { Component, Output, EventEmitter, ElementRef, ViewChild } from '@angular
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../core/services/auth.service';
-import { ThemeService, ThemeMode } from '../core/services/theme.service';
+import { AuthService } from '../core/services/autenticacion.service';
+import { ThemeService, ThemeMode } from '../core/services/tema.service';
 import packageInfo from '../../../package.json';
 
 declare var bootstrap: any;

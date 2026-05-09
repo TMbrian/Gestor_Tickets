@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DialogService, DialogOptions } from '../../core/services/dialog.service';
+import { DialogService, DialogOptions } from '../../core/services/dialogo.service';
 import { Subscription } from 'rxjs';
 
 declare var bootstrap: any;

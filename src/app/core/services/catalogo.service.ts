@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Firestore, collection, collectionData, doc, addDoc, updateDoc, deleteDoc, query, where, getDocs, orderBy } from '@angular/fire/firestore';
-import { AuthService } from './auth.service';
-import { Site, Area, Ticket } from '../models/ticket.model';
+import { AuthService } from './autenticacion.service';
+import { Site, Area, Ticket } from '../models/ticket.modelo';
 import { Observable } from 'rxjs';
 
 @Injectable({

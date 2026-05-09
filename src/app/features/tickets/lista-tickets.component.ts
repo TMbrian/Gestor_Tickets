@@ -2,22 +2,22 @@ import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { TicketService } from '../../core/services/ticket.service';
-import { ExportService } from '../../core/services/export.service';
-import { CatalogService } from '../../core/services/catalog.service';
-import { Ticket, Site, Area } from '../../core/models/ticket.model';
-import { AuthService } from '../../core/services/auth.service';
+import { ExportService } from '../../core/services/exportacion.service';
+import { CatalogService } from '../../core/services/catalogo.service';
+import { Ticket, Site, Area } from '../../core/models/ticket.modelo';
+import { AuthService } from '../../core/services/autenticacion.service';
 
 declare var bootstrap: any;
 
-import { DateUtils } from '../../core/utils/date-utils';
-import { DialogService } from '../../core/services/dialog.service';
+import { DateUtils } from '../../core/utils/utilidades-fecha';
+import { DialogService } from '../../core/services/dialogo.service';
 
 @Component({
   selector: 'app-ticket-list',
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule],
-  templateUrl: './ticket-list.component.html',
-  styleUrls: ['./ticket-list.component.scss']
+  templateUrl: './lista-tickets.component.html',
+  styleUrls: ['./lista-tickets.component.scss']
 })
 export class TicketListComponent implements OnInit {
   tickets: Ticket[] = [];

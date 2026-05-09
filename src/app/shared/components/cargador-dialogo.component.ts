@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DialogService, LoaderState } from '../../core/services/dialog.service';
+import { DialogService, LoaderState } from '../../core/services/dialogo.service';
 import { Subscription } from 'rxjs';
 
 @Component({

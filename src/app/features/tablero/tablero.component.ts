@@ -2,8 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TicketService } from '../../core/services/ticket.service';
-import { DialogService } from '../../core/services/dialog.service';
-import { TicketStatistics } from '../../core/models/ticket.model';
+import { DialogService } from '../../core/services/dialogo.service';
+import { TicketStatistics } from '../../core/models/ticket.modelo';
 import Chart from 'chart.js/auto';
 
 @Component({

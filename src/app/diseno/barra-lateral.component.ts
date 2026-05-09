@@ -2,9 +2,9 @@ import { Component, Input, ViewChild, ElementRef, Output, EventEmitter } from '@
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../core/services/auth.service';
-import { ThemeService, ThemeMode } from '../core/services/theme.service';
-import { DialogService } from '../core/services/dialog.service';
+import { AuthService } from '../core/services/autenticacion.service';
+import { ThemeService, ThemeMode } from '../core/services/tema.service';
+import { DialogService } from '../core/services/dialogo.service';
 import packageInfo from '../../../package.json';
 
 declare var bootstrap: any;
