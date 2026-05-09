@@ -14,6 +14,9 @@
         <div class="text-start">
           <input type="text" class="form-control form-control-lg rounded-3 border-2 shadow-sm" [(ngModel)]="valorIngresado"
             [placeholder]="opciones.placeholder || ''" [maxlength]="opciones.maxLength || 524288" (keyup.enter)="alConfirmar()" #campoEntrada>
+          <div class="text-end mt-1" *ngIf="opciones.maxLength">
+            <small class="text-secondary opacity-75 fw-medium">{{ valorIngresado.length }}/{{ opciones.maxLength }}</small>
+          </div>
         </div>
       </div>
       <div class="modal-footer border-0 p-4 pt-0 d-flex gap-2">
