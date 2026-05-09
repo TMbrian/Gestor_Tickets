@@ -136,12 +136,13 @@
                 60).toFixed(1) + 'h' : '--' }}
               </span>
             </td>
-            <td class="fw-medium">{{ ticket.sitio }}</td>
-            <td class="text-secondary">{{ ticket.areaAfectada }}</td>
+            <td class="fw-medium text-truncate" style="max-width: 150px;" [title]="ticket.sitio">{{ ticket.sitio }}</td>
+            <td class="text-secondary text-truncate" style="max-width: 150px;" [title]="ticket.areaAfectada">{{ ticket.areaAfectada }}</td>
             <td>
               <span class="badge px-3 py-2 rounded-pill shadow-sm" [ngClass]="{
                  'bg-danger': ticket.estado === 'Abierto',
                  'bg-warning text-dark': ticket.estado === 'En Progreso',
+                 'bg-info text-dark': ticket.estado === 'Pausado',
                  'bg-success': ticket.estado === 'Cerrado'
               }">{{ ticket.estado }}</span>
             </td>
@@ -197,25 +198,25 @@
                 <div class="accordion-body bg-body p-4 pt-3 border rounded-bottom-4 border-top-0">
                   <div class="row g-3">
                     <div class="col-md-3">
-                      <label class="form-label fw-semibold">Número de Ticket*</label>
-                      <input type="text" class="form-control bg-body" formControlName="numeroTicket"
+                      <label for="numTicket" class="form-label fw-semibold">Número de Ticket*</label>
+                      <input type="text" id="numTicket" class="form-control bg-body" formControlName="numeroTicket"
                         placeholder="Numero De Ticket"
                         [ngClass]="{'is-invalid': formularioTicket.get('numeroTicket')?.touched && formularioTicket.get('numeroTicket')?.invalid}">
                       <div class="invalid-feedback">Solo se permiten números.</div>
                     </div>
                     <div class="col-md-3">
-                      <label class="form-label fw-semibold">Semana*</label>
-                      <input type="number" class="form-control bg-body" formControlName="semana" readonly>
+                      <label for="semanaTicket" class="form-label fw-semibold">Semana*</label>
+                      <input type="number" id="semanaTicket" class="form-control bg-body" formControlName="semana" readonly>
                     </div>
                     <div class="col-md-3">
-                      <label class="form-label fw-semibold">Fecha de Asignación*</label>
-                      <input type="date" class="form-control bg-body" formControlName="fechaAsignacion"
+                      <label for="fechaAsig" class="form-label fw-semibold">Fecha de Asignación*</label>
+                      <input type="date" id="fechaAsig" class="form-control bg-body" formControlName="fechaAsignacion"
                         (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()"
                         (paste)="$event.preventDefault()">
                     </div>
                     <div class="col-md-3">
-                      <label class="form-label fw-semibold">Hora de Asignación*</label>
-                      <input type="time" class="form-control bg-body" formControlName="horaAsignacion"
+                      <label for="horaAsig" class="form-label fw-semibold">Hora de Asignación*</label>
+                      <input type="time" id="horaAsig" class="form-control bg-body" formControlName="horaAsignacion"
                         (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()"
                         (paste)="$event.preventDefault()">
                     </div>
@@ -237,14 +238,14 @@
                 <div class="accordion-body bg-body p-4 pt-3 border rounded-bottom-4 border-top-0">
                   <div class="row g-3">
                     <div class="col-md-6">
-                      <label class="form-label fw-semibold">Fecha de Cierre</label>
-                      <input type="date" class="form-control bg-body" formControlName="fechaCierre"
+                      <label for="fechaCie" class="form-label fw-semibold">Fecha de Cierre</label>
+                      <input type="date" id="fechaCie" class="form-control bg-body" formControlName="fechaCierre"
                         (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()"
                         (paste)="$event.preventDefault()">
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label fw-semibold">Hora de Cierre</label>
-                      <input type="time" class="form-control bg-body" formControlName="horaCierre"
+                      <label for="horaCie" class="form-label fw-semibold">Hora de Cierre</label>
+                      <input type="time" id="horaCie" class="form-control bg-body" formControlName="horaCierre"
                         (click)="$any($event.target).showPicker()" (keydown)="$event.preventDefault()"
                         (paste)="$event.preventDefault()">
                     </div>
@@ -266,23 +267,23 @@
                 <div class="accordion-body bg-body p-4 pt-3 border rounded-bottom-4 border-top-0">
                   <div class="row g-3 align-items-center">
                     <div class="col-md-6">
-                      <label class="form-label fw-semibold">CEDI / Sitio*</label>
-                      <select class="form-select bg-body" formControlName="sitio">
+                      <label for="sitioTicket" class="form-label fw-semibold">CEDI / Sitio*</label>
+                      <select id="sitioTicket" class="form-select bg-body" formControlName="sitio">
                         <option value="" disabled>Selecciona un sitio</option>
                         <option *ngFor="let sitio of sitios" [value]="sitio.nombre">{{ sitio.nombre }}</option>
                       </select>
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label fw-semibold">Área Afectada*</label>
-                      <select class="form-select bg-body" formControlName="areaAfectada">
+                      <label for="areaTicket" class="form-label fw-semibold">Área Afectada*</label>
+                      <select id="areaTicket" class="form-select bg-body" formControlName="areaAfectada">
                         <option value="" disabled>Selecciona un área</option>
                         <option *ngFor="let area of areas" [value]="area.nombre">{{ area.nombre }}</option>
                       </select>
                     </div>
 
                     <div class="col-md-12">
-                      <label class="form-label fw-semibold">Descripción del Problema*</label>
-                      <textarea class="form-control bg-body" rows="3" formControlName="descripcion"
+                      <label for="descTicket" class="form-label fw-semibold">Descripción del Problema*</label>
+                      <textarea id="descTicket" class="form-control bg-body" rows="3" formControlName="descripcion"
                         placeholder="Detalla el problema exhaustivamente..."></textarea>
                     </div>
 
@@ -296,28 +297,31 @@
                           id="btnradio2">
                         <label class="btn btn-outline-warning flex-fill" for="btnradio2">En Progreso</label>
 
+                        <input type="radio" class="btn-check" formControlName="estado" value="Pausado" id="btnradio4">
+                        <label class="btn btn-outline-info flex-fill" for="btnradio4">Pausado</label>
+
                         <input type="radio" class="btn-check" formControlName="estado" value="Cerrado" id="btnradio3">
                         <label class="btn btn-outline-success flex-fill" for="btnradio3">Cerrado</label>
                       </div>
                     </div>
 
                     <div class="col-md-6 pt-2">
-                      <label class="form-label fw-semibold mb-3">Ticket Asignado Oficialmente</label>
+                      <label for="asigOficial" class="form-label fw-semibold mb-3">Ticket Asignado Oficialmente</label>
                       <div class="d-flex align-items-center rounded bg-body p-2 border h-100" style="max-height: 48px;">
                         <input class="form-check-input ms-0 me-3 mt-0 fs-4" type="checkbox" role="switch"
-                          formControlName="estaAsignado">
-                        <label class="form-check-label fw-medium mt-1 text-truncate">Marcar como SI asignado</label>
+                          id="asigOficial" formControlName="estaAsignado">
+                        <label class="form-check-label fw-medium mt-1 text-truncate" for="asigOficial">Marcar como SI asignado</label>
                       </div>
                     </div>
 
                     <div class="col-md-6 pt-2">
-                      <label class="form-label fw-semibold text-danger mb-3">RFC Emergente (Registro)</label>
+                      <label for="rfcHabil" class="form-label fw-semibold text-danger mb-3">RFC Emergente (Registro)</label>
                       <div
                         class="d-flex align-items-center rounded bg-danger bg-opacity-10 p-2 border border-danger h-100"
                         style="max-height: 48px;">
                         <input class="form-check-input ms-0 me-3 mt-0 fs-4" type="checkbox" role="switch"
-                          formControlName="esRfc">
-                        <label class="form-check-label fw-bold text-danger mt-1 text-truncate">Habilitar RFC
+                          id="rfcHabil" formControlName="esRfc">
+                        <label class="form-check-label fw-bold text-danger mt-1 text-truncate" for="rfcHabil">Habilitar RFC
                           Emergente</label>
                       </div>
                     </div>
@@ -326,8 +330,8 @@
                       <div class="alert alert-danger d-flex align-items-center mb-0 shadow-sm p-3 border-0 rounded-3">
                         <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
                         <div class="flex-grow-1">
-                          <label class="form-label fw-bold mb-1">Número de Autorización RFC</label>
-                          <input type="text" class="form-control font-monospace border-0 shadow-sm"
+                          <label for="numRfcAuth" class="form-label fw-bold mb-1">Número de Autorización RFC</label>
+                          <input type="text" id="numRfcAuth" class="form-control font-monospace border-0 shadow-sm"
                             formControlName="numeroRfc" placeholder="EJ-RFC-123445">
                         </div>
                       </div>

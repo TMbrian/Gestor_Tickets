@@ -81,6 +81,8 @@ export class ServicioTickets {
         areaAfectada: data.areaAfectada || data.affectedArea || '',
         descripcion: data.descripcion || data.description || '',
         estado: data.estado || data.status || 'Abierto',
+        tiempoPausaMins: data.tiempoPausaMins || 0,
+        ultimaPausaInicio: data.ultimaPausaInicio || null,
         idUsuario: data.idUsuario || '',
         creadoEn: data.creadoEn || data.createdAt || Date.now(),
         actualizadoEn: data.actualizadoEn || data.updatedAt || Date.now()
@@ -159,10 +161,28 @@ export class ServicioTickets {
       || cambios.fechaCierre !== undefined
       || cambios.horaCierre !== undefined;
 
-    if (afectaFechas) {
+    if (afectaFechas || cambios.estado === 'Cerrado') {
       const ticketActual = await this.obtenerTicket(id);
       if (ticketActual) {
-        const ticketMergeado = { ...ticketActual, ...cambios } as Ticket;
+        let ticketMergeado = { ...ticketActual, ...cambios } as Ticket;
+
+        // Gestión de la lógica de pausa al cambiar de estado
+        if (cambios.estado !== undefined && cambios.estado !== ticketActual.estado) {
+          // Si entra en pausa
+          if (cambios.estado === 'Pausado') {
+            cambios.ultimaPausaInicio = Date.now();
+          }
+          // Si sale de pausa (a cualquier otro estado)
+          else if (ticketActual.estado === 'Pausado' && ticketActual.ultimaPausaInicio) {
+            const diffMins = Math.round((Date.now() - ticketActual.ultimaPausaInicio) / 60000);
+            cambios.tiempoPausaMins = (ticketActual.tiempoPausaMins || 0) + diffMins;
+            cambios.ultimaPausaInicio = null;
+            // Actualizar el mergeado para que el cálculo de solución use el tiempo de pausa acumulado
+            ticketMergeado.tiempoPausaMins = cambios.tiempoPausaMins;
+            ticketMergeado.ultimaPausaInicio = null;
+          }
+        }
+
         cambios.tiempoSolucionMins = this.calcularTiempoSolucion(ticketMergeado);
       }
     }
@@ -203,7 +223,10 @@ export class ServicioTickets {
 
     if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) return null;
 
-    return Math.max(0, Math.round((fin.getTime() - inicio.getTime()) / 60000));
+    const diferenciaTotalMins = Math.round((fin.getTime() - inicio.getTime()) / 60000);
+    const tiempoPausa = ticket.tiempoPausaMins || 0;
+
+    return Math.max(0, diferenciaTotalMins - tiempoPausa);
   }
 
   /**
@@ -240,7 +263,7 @@ export class ServicioTickets {
 
     const estadisticas: EstadisticasTicket = {
       total: filtrados.length,
-      porEstado: { 'Abierto': 0, 'En Progreso': 0, 'Cerrado': 0 },
+      porEstado: { 'Abierto': 0, 'En Progreso': 0, 'Pausado': 0, 'Cerrado': 0 },
       promedioTiempoSolucionMins: 0
     };
 

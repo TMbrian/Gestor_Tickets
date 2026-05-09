@@ -1,5 +1,5 @@
 /** Estados posibles del ciclo de vida de un ticket de soporte */
-export type EstadoTicket = 'Abierto' | 'En Progreso' | 'Cerrado';
+export type EstadoTicket = 'Abierto' | 'En Progreso' | 'Pausado' | 'Cerrado';
 
 /**
  * Representa un ticket de soporte técnico dentro del sistema.
@@ -33,6 +33,15 @@ export interface Ticket {
    * Se calcula automáticamente al registrar el cierre del ticket.
    */
   tiempoSolucionMins: number | null;
+
+  /**
+   * Tiempo total (en minutos) que el ticket ha permanecido en estado 'Pausado'.
+   * Se descuenta del tiempo total de solución.
+   */
+  tiempoPausaMins?: number;
+
+  /** Marca de tiempo (Unix ms) de cuando se inició la última pausa */
+  ultimaPausaInicio?: number | null;
 
   /** Indica si el ticket ha sido asignado a un técnico o responsable */
   estaAsignado: boolean;

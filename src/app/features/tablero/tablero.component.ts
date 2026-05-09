@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ServicioTickets, ServicioDialogo } from '../../core/services';
 import { EstadisticasTicket } from '../../core/models';
+import { UtilidadesFecha } from '../../core/utils/utilidades-fecha';
 import Chart from 'chart.js/auto';
 
 /**
@@ -147,11 +148,17 @@ export class DashboardComponent implements OnInit {
    * @returns Objeto con el número de semana ISO y el año al que pertenece.
    */
   private calcularSemanaIso(fecha: Date): { week: number, year: number } {
-    const fechaUtc = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+    const semana = UtilidadesFecha.calcularSemanaISO(fecha);
+    // Para el año ISO, usamos el jueves de esa semana como referencia
+    const d = new Date(fecha);
+    const day = d.getDay();
+    if (day === 6) d.setDate(d.getDate() + 2);
+    else if (day === 0) d.setDate(d.getDate() + 1);
+
+    const fechaUtc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     const numeroDia = fechaUtc.getUTCDay() || 7;
     fechaUtc.setUTCDate(fechaUtc.getUTCDate() + 4 - numeroDia);
-    const inicioAnio = new Date(Date.UTC(fechaUtc.getUTCFullYear(), 0, 1));
-    const semana = Math.ceil((((fechaUtc.getTime() - inicioAnio.getTime()) / 86400000) + 1) / 7);
+
     return { week: semana, year: fechaUtc.getUTCFullYear() };
   }
 
@@ -204,15 +211,15 @@ export class DashboardComponent implements OnInit {
         if (isNaN(fechaAsignacion.getTime())) return;
 
         // Calcular semana ISO de la fecha de asignación
-        const fecha = new Date(fechaAsignacion.getTime());
-        fecha.setHours(0, 0, 0, 0);
-        fecha.setDate(fecha.getDate() + 3 - (fecha.getDay() + 6) % 7);
-        const primeraSemana = new Date(fecha.getFullYear(), 0, 4);
-        const numeroSemana = 1 + Math.round(
-          ((fecha.getTime() - primeraSemana.getTime()) / 86400000 - 3 + (primeraSemana.getDay() + 6) % 7) / 7
-        );
+        const numeroSemana = UtilidadesFecha.calcularSemanaISO(fechaAsignacion);
+        // Para obtener el año correcto de la semana, usamos una lógica similar al desplazamiento
+        const dRecurso = new Date(fechaAsignacion);
+        const dayR = dRecurso.getDay();
+        if (dayR === 6) dRecurso.setDate(dRecurso.getDate() + 2);
+        else if (dayR === 0) dRecurso.setDate(dRecurso.getDate() + 1);
+        const anioRef = dRecurso.getFullYear();
 
-        const etiqueta = `Sem ${numeroSemana} - ${fecha.getFullYear()}`;
+        const etiqueta = `Sem ${numeroSemana} - ${anioRef}`;
         if (!semanas[etiqueta]) {
           semanas[etiqueta] = { count: 0, totalMins: 0 };
         }
@@ -288,14 +295,15 @@ export class DashboardComponent implements OnInit {
         this.graficaEstado = new Chart(canvasEstado, {
           type: 'doughnut',
           data: {
-            labels: ['Abierto', 'En Progreso', 'Cerrado'],
+            labels: ['Abierto', 'En Progreso', 'Pausado', 'Cerrado'],
             datasets: [{
               data: [
                 this.estadisticas?.porEstado['Abierto'] || 0,
                 this.estadisticas?.porEstado['En Progreso'] || 0,
+                this.estadisticas?.porEstado['Pausado'] || 0,
                 this.estadisticas?.porEstado['Cerrado'] || 0
               ],
-              backgroundColor: ['#dc3545', '#ffc107', '#198754'],
+              backgroundColor: ['#dc3545', '#ffc107', '#0dcaf0', '#198754'],
               borderWidth: 0
             }]
           },

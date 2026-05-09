@@ -133,7 +133,7 @@
               <td>{{ ticket.fechaAsignacion }}</td>
               <td>
                 <span class="badge rounded-pill px-3 py-2"
-                  [ngClass]="{'bg-danger': ticket.estado === 'Abierto', 'bg-warning text-dark': ticket.estado === 'En Progreso', 'bg-success': ticket.estado === 'Cerrado'}">{{ticket.estado}}</span>
+                  [ngClass]="{'bg-danger': ticket.estado === 'Abierto', 'bg-warning text-dark': ticket.estado === 'En Progreso', 'bg-info text-dark': ticket.estado === 'Pausado', 'bg-success': ticket.estado === 'Cerrado'}">{{ticket.estado}}</span>
               </td>
             </tr>
           </tbody>

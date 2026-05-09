@@ -17,15 +17,24 @@ export class UtilidadesFecha {
    * @returns Número de semana ISO (1-53).
    */
   static calcularSemanaISO(fecha: Date): number {
-    // Se trabaja con una copia en UTC para no mutar el objeto original
-    const fechaUTC = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+    // Se trabaja con una copia local para no mutar el objeto original
+    const d = new Date(fecha);
+
+    // Regla de Negocio: Sábado (6) y Domingo (0) se mueven al Lunes siguiente
+    const diaDelAnio = d.getDay();
+    if (diaDelAnio === 6) { // Sábado
+      d.setDate(d.getDate() + 2);
+    } else if (diaDelAnio === 0) { // Domingo
+      d.setDate(d.getDate() + 1);
+    }
+
+    // Se trabaja con una copia en UTC para el cálculo ISO
+    const fechaUTC = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 
     // ISO 8601: el jueves de cada semana determina a qué año pertenece.
-    // Se ajusta la fecha al jueves de esa semana (|| 7 convierte el 0 del domingo a 7).
     const diaSemana = fechaUTC.getUTCDay() || 7;
     fechaUTC.setUTCDate(fechaUTC.getUTCDate() + 4 - diaSemana);
 
-    // Se calcula cuántos días han pasado desde el 1 de enero del año de esa semana
     const inicioDeTAnio = new Date(Date.UTC(fechaUTC.getUTCFullYear(), 0, 1));
     return Math.ceil((((fechaUTC.getTime() - inicioDeTAnio.getTime()) / 86400000) + 1) / 7);
   }
