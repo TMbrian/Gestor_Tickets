@@ -6,7 +6,7 @@ import { EstadisticasTicket } from '../../core/models';
 import Chart from 'chart.js/auto';
 
 /**
- * Componente del Dashboard principal.
+ * Componente del Tablero principal.
  *
  * Muestra una vista resumen del estado de los tickets de soporte filtrados
  * por semana ISO: tarjetas con totales, gráfica histórica de tickets resueltos,
@@ -22,7 +22,10 @@ import Chart from 'chart.js/auto';
   template: `
     <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary-subtle">
       <div>
-        <h2 class="fw-bold mb-1 text-body-emphasis">Dashboard</h2>
+        <h2 class="fw-bold mb-1 text-body-emphasis d-flex align-items-center">
+          <i class="bi bi-speedometer2 text-primary me-2"></i>
+          Tablero
+        </h2>
         <p class="text-muted mb-0">Semana {{semanaSeleccionada}}, {{anioSeleccionado}}</p>
       </div>
       
@@ -233,7 +236,7 @@ export class DashboardComponent implements OnInit {
    * @returns Promise<void> que se resuelve al ocultar el loader.
    */
   async refrescarConCargador() {
-    this.servicioDialogo.mostrarCargador('Actualizando datos del Dashboard...');
+    this.servicioDialogo.mostrarCargador('Actualizando datos del Tablero...');
     const tiempoInicio = Date.now();
     try {
       await this.cargarEstadisticas();

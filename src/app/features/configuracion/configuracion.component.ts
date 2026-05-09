@@ -18,7 +18,10 @@ import { Sitio, Area } from '../../core/models';
   template: `
     <div class="mb-4 pb-3 border-bottom border-secondary-subtle d-flex justify-content-between align-items-center">
       <div>
-        <h2 class="fw-bold mb-1 text-body-emphasis">Configuración de Catálogos</h2>
+        <h2 class="fw-bold mb-1 text-body-emphasis d-flex align-items-center">
+          <i class="bi bi-sliders2 text-primary me-2"></i>
+          Configuración de Catálogos
+        </h2>
         <p class="text-muted mb-0">Administra los Sitios y Áreas disponibles para los tickets.</p>
       </div>
       <!-- Botón para poblar catálogos desde tickets históricos -->
