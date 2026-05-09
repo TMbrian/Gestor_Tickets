@@ -200,7 +200,7 @@
                     <div class="col-md-3">
                       <label for="numTicket" class="form-label fw-semibold">Número de Ticket*</label>
                       <input type="text" id="numTicket" class="form-control bg-body" formControlName="numeroTicket"
-                        placeholder="Numero De Ticket"
+                        placeholder="Numero De Ticket" maxlength="15"
                         [ngClass]="{'is-invalid': formularioTicket.get('numeroTicket')?.touched && formularioTicket.get('numeroTicket')?.invalid}">
                       <div class="invalid-feedback">Solo se permiten números.</div>
                     </div>
@@ -284,7 +284,7 @@
                     <div class="col-md-12">
                       <label for="descTicket" class="form-label fw-semibold">Descripción del Problema*</label>
                       <textarea id="descTicket" class="form-control bg-body" rows="3" formControlName="descripcion"
-                        placeholder="Detalla el problema exhaustivamente..."></textarea>
+                        placeholder="Detalla el problema exhaustivamente..." maxlength="1000"></textarea>
                     </div>
 
                     <div class="col-12 pt-2 mb-2">
@@ -332,7 +332,7 @@
                         <div class="flex-grow-1">
                           <label for="numRfcAuth" class="form-label fw-bold mb-1">Número de Autorización RFC</label>
                           <input type="text" id="numRfcAuth" class="form-control font-monospace border-0 shadow-sm"
-                            formControlName="numeroRfc" placeholder="EJ-RFC-123445">
+                            formControlName="numeroRfc" placeholder="EJ-RFC-123445" maxlength="30">
                         </div>
                       </div>
                     </div>

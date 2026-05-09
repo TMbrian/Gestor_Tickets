@@ -35,6 +35,9 @@ export interface OpcionesPrompt extends OpcionesDialogo {
 
   /** Texto de ayuda visible cuando el campo está vacío */
   placeholder?: string;
+
+  /** Longitud máxima permitida para la entrada de texto */
+  maxLength?: number;
 }
 
 /**

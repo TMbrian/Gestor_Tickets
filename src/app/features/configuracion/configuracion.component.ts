@@ -122,6 +122,7 @@ export class ComponenteConfiguracion implements OnInit {
       titulo: 'Nuevo Sitio (CEDI)',
       mensaje: 'Ingresa el nombre del nuevo sitio para el catálogo:',
       placeholder: 'Ej: CEDI Monterrey',
+      maxLength: 50,
       tipo: 'primary',
       textoConfirmar: 'Registrar'
     });
@@ -145,6 +146,7 @@ export class ComponenteConfiguracion implements OnInit {
       titulo: 'Editar Sitio',
       mensaje: `Modifica el nombre del sitio "${nombreAnterior}":`,
       valorPorDefecto: nombreAnterior,
+      maxLength: 50,
       tipo: 'primary',
       textoConfirmar: 'Actualizar'
     });
@@ -208,6 +210,7 @@ export class ComponenteConfiguracion implements OnInit {
       titulo: 'Nueva Área Afectada',
       mensaje: 'Ingresa el nombre de la nueva área para el catálogo:',
       placeholder: 'Ej: Redes / Conectividad',
+      maxLength: 50,
       tipo: 'success',
       textoConfirmar: 'Registrar'
     });
@@ -231,6 +234,7 @@ export class ComponenteConfiguracion implements OnInit {
       titulo: 'Editar Área',
       mensaje: `Modifica el nombre de la categoría "${nombreAnterior}":`,
       valorPorDefecto: nombreAnterior,
+      maxLength: 50,
       tipo: 'success',
       textoConfirmar: 'Actualizar'
     });

@@ -170,18 +170,18 @@ export class ListaTicketsComponent implements OnInit {
    */
   inicializarFormulario() {
     this.formularioTicket = this.fb.group({
-      numeroTicket: ['', [Validators.required, Validators.pattern('^[0-9]+$')]],
+      numeroTicket: ['', [Validators.required, Validators.pattern('^[0-9]+$'), Validators.maxLength(15)]],
       semana: [1, [Validators.required, Validators.min(1), Validators.max(53)]],
       fechaAsignacion: ['', Validators.required],
       horaAsignacion: ['', Validators.required],
       fechaCierre: [''],
       horaCierre: [''],
-      isAsignado: [false],
+      estaAsignado: [false],
       esRfc: [false],
-      numeroRfc: [''],
+      numeroRfc: ['', Validators.maxLength(30)],
       sitio: ['', Validators.required],
       areaAfectada: ['', Validators.required],
-      descripcion: ['', Validators.required],
+      descripcion: ['', [Validators.required, Validators.maxLength(1000)]],
       estado: ['Abierto', Validators.required]
     });
 

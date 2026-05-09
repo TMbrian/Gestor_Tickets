@@ -13,7 +13,7 @@
 
         <div class="text-start">
           <input type="text" class="form-control form-control-lg rounded-3 border-2 shadow-sm" [(ngModel)]="valorIngresado"
-            [placeholder]="opciones.placeholder || ''" (keyup.enter)="alConfirmar()" #campoEntrada>
+            [placeholder]="opciones.placeholder || ''" [maxlength]="opciones.maxLength || 524288" (keyup.enter)="alConfirmar()" #campoEntrada>
         </div>
       </div>
       <div class="modal-footer border-0 p-4 pt-0 d-flex gap-2">
