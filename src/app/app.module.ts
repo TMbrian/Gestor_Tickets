@@ -16,14 +16,11 @@ import { AppComponent } from './app.component';
  * proyecto para no introducir cambios funcionales no solicitados.
  */
 @NgModule({
-  declarations: [
-    AppComponent
-  ],
+  declarations: [],
   imports: [
     BrowserModule,
     AppRoutingModule
   ],
   providers: [],
-  bootstrap: [AppComponent]
 })
 export class AppModule { }

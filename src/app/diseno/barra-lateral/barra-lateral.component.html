@@ -1,0 +1,127 @@
+<div class="d-flex flex-column h-100 shadow-lg border-end overflow-hidden"
+  style="background: linear-gradient(180deg, #1a1d20 0%, #000000 100%); color: white; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);"
+  [style.width]="estaColapsado ? '80px' : '280px'">
+
+  <!-- Encabezado de marca -->
+  <div class="p-4 mb-2 border-bottom border-secondary border-opacity-25">
+    <a routerLink="/" class="d-flex align-items-center text-white text-decoration-none"
+      [ngClass]="estaColapsado ? 'justify-content-center' : ''">
+      <div class="bg-primary bg-gradient rounded-3 d-flex align-items-center justify-content-center shadow-sm"
+        style="min-width: 42px; height: 42px;">
+        <i class="bi bi-layers-fill fs-4 text-white"></i>
+      </div>
+      <span class="fs-4 fw-bold tracking-tight ms-3 text-nowrap" *ngIf="!estaColapsado">ITTickets</span>
+    </a>
+  </div>
+
+  <!-- Navegación principal -->
+  <div class="flex-grow-1 px-3 py-4 custom-scrollbar overflow-auto">
+    <div class="text-uppercase text-secondary fw-bold mb-3 d-flex align-items-center"
+      style="font-size: 0.7rem; letter-spacing: 1.5px;" *ngIf="!estaColapsado">
+      <span class="me-2">Navegación</span>
+      <div class="flex-grow-1 border-top border-secondary border-opacity-25"></div>
+    </div>
+
+    <ul class="nav nav-pills flex-column gap-2 mb-4">
+      <!-- Enlace al tablero principal -->
+      <li class="nav-item">
+        <a routerLink="/tablero" routerLinkActive="active"
+          class="nav-link text-white opacity-75 d-flex align-items-center rounded-3 py-3"
+          [ngClass]="estaColapsado ? 'justify-content-center px-0' : 'px-3'" title="Tablero">
+          <i class="bi bi-grid-1x2-fill fs-5" [ngClass]="!estaColapsado ? 'me-3' : 'me-0'"></i>
+          <span class="fw-medium" *ngIf="!estaColapsado">Tablero</span>
+        </a>
+      </li>
+      <!-- Enlace al historial de tickets -->
+      <li class="nav-item">
+        <a routerLink="/tickets" routerLinkActive="active"
+          class="nav-link text-white opacity-75 d-flex align-items-center rounded-3 py-3"
+          [ngClass]="estaColapsado ? 'justify-content-center px-0' : 'px-3'" title="Historial de Tickets">
+          <i class="bi bi-table fs-5" [ngClass]="!estaColapsado ? 'me-3' : 'me-0'"></i>
+          <span class="fw-medium" *ngIf="!estaColapsado">Historial de Tickets</span>
+        </a>
+      </li>
+      <!-- Enlace a la configuración de catálogos -->
+      <li class="nav-item">
+        <a routerLink="/configuracion" routerLinkActive="active"
+          class="nav-link text-white opacity-75 d-flex align-items-center rounded-3 py-3"
+          [ngClass]="estaColapsado ? 'justify-content-center px-0' : 'px-3'" title="Configuración de Catálogos">
+          <i class="bi bi-gear-fill fs-5" [ngClass]="!estaColapsado ? 'me-3' : 'me-0'"></i>
+          <span class="fw-medium" *ngIf="!estaColapsado">Configuración</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- Sección de personalización -->
+    <div class="text-uppercase text-secondary fw-bold mb-3 d-flex align-items-center"
+      style="font-size: 0.7rem; letter-spacing: 1.5px;" *ngIf="!estaColapsado">
+      <span class="me-2">Personalización</span>
+      <div class="flex-grow-1 border-top border-secondary border-opacity-25"></div>
+    </div>
+
+    <ul class="nav nav-pills flex-column gap-2">
+      <!-- Enlace al perfil del usuario -->
+      <li class="nav-item">
+        <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#modalPerfil" (click)="abrirPerfil.emit()"
+          class="nav-link text-white opacity-75 d-flex align-items-center rounded-3 py-3"
+          [ngClass]="estaColapsado ? 'justify-content-center px-0' : 'px-3'" title="Mi Perfil">
+          <i class="bi bi-person-circle fs-5" [ngClass]="!estaColapsado ? 'me-3' : 'me-0'"></i>
+          <span class="fw-medium" *ngIf="!estaColapsado">
+            Mi Perfil ({{ servicioAuth.usuarioActual?.nombre }})
+          </span>
+        </a>
+      </li>
+
+      <!-- Selector de tema visual: claro, oscuro o sistema -->
+      <li class="nav-item mb-2" *ngIf="!estaColapsado">
+        <div class="px-3 pt-2 pb-1">
+          <div class="d-flex bg-dark bg-opacity-50 p-1 rounded-pill border border-secondary border-opacity-25">
+            <button class="btn btn-sm flex-fill rounded-pill py-1 border-0 transition"
+              [class.btn-primary]="servicioTema.temaActual === 'light'"
+              [class.text-white-50]="servicioTema.temaActual !== 'light'" (click)="cambiarTema('light')"
+              title="Modo Claro">
+              <i class="bi bi-sun-fill"></i>
+            </button>
+            <button class="btn btn-sm flex-fill rounded-pill py-1 border-0 transition"
+              [class.btn-primary]="servicioTema.temaActual === 'dark'"
+              [class.text-white-50]="servicioTema.temaActual !== 'dark'" (click)="cambiarTema('dark')"
+              title="Modo Oscuro">
+              <i class="bi bi-moon-stars-fill"></i>
+            </button>
+            <button class="btn btn-sm flex-fill rounded-pill py-1 border-0 transition"
+              [class.btn-primary]="servicioTema.temaActual === 'system'"
+              [class.text-white-50]="servicioTema.temaActual !== 'system'" (click)="cambiarTema('system')"
+              title="Sistema">
+              <i class="bi bi-display"></i>
+            </button>
+          </div>
+          <div class="text-center mt-1">
+            <small class="text-secondary" style="font-size: 0.6rem;">
+              Tema: {{ servicioTema.temaActual | titlecase }}
+            </small>
+          </div>
+        </div>
+      </li>
+
+      <!-- Botón de cierre de sesión -->
+      <li class="nav-item">
+        <button (click)="cerrarSesion()"
+          class="btn btn-danger w-100 fw-bold rounded-pill py-2 shadow-sm d-flex align-items-center justify-content-center"
+          [ngClass]="estaColapsado ? 'px-2' : 'px-3'" title="Cerrar Sesión">
+          <i class="bi bi-box-arrow-right fs-5" [ngClass]="!estaColapsado ? 'me-2' : 'me-0'"></i>
+          <span *ngIf="!estaColapsado">Cerrar Sesión</span>
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Insignia de versión fija al pie de la barra -->
+  <div class="mt-auto bg-primary py-2 text-center">
+    <small class="text-white fw-medium" style="font-size: 0.75rem;" *ngIf="!estaColapsado">
+      Versión {{ version }}
+    </small>
+    <small class="text-white fw-medium" style="font-size: 0.65rem;" *ngIf="estaColapsado">
+      v{{ version }}
+    </small>
+  </div>
+</div>

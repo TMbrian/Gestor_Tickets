@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ServicioDialogo, OpcionesDialogo } from '../../core/services/dialogo.service';
+import { ServicioDialogo, OpcionesDialogo } from '../../../core/services/dialogo.service';
 import { Subscription } from 'rxjs';
 
 declare var bootstrap: any;
@@ -22,38 +22,8 @@ declare var bootstrap: any;
   selector: 'app-confirm-dialog',
   standalone: true,
   imports: [CommonModule],
-  template: `
-    <div class="modal fade" #confirmModal tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-      <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-          <div class="modal-header border-0 pb-0 pt-4 px-4 d-flex justify-content-center">
-            <div class="rounded-circle bg-opacity-10 d-flex align-items-center justify-content-center"
-                 [ngClass]="'bg-' + opciones.tipo"
-                 style="width: 80px; height: 80px;">
-              <i class="bi fs-1" [ngClass]="obtenerIcono()"></i>
-            </div>
-          </div>
-          <div class="modal-body text-center p-4">
-            <h4 class="fw-bold mb-2 text-body-emphasis">{{ opciones.titulo }}</h4>
-            <p class="text-secondary mb-0">{{ opciones.mensaje }}</p>
-          </div>
-          <div class="modal-footer border-0 p-4 pt-0 d-flex gap-2">
-            <button *ngIf="!opciones.esAlerta" type="button" class="btn btn-danger flex-fill rounded-pill py-2 fw-medium" (click)="alCancelar()">
-              {{ opciones.textoCancelar || 'Cancelar' }}
-            </button>
-            <button type="button" class="btn btn-primary flex-fill rounded-pill py-2 fw-bold shadow-sm" (click)="alConfirmar()">
-              {{ opciones.textoConfirmar || 'Aceptar' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .modal-content { background-color: var(--bs-body-bg); color: var(--bs-body-color); }
-    .btn-light { background-color: var(--bs-secondary-bg); border-color: var(--bs-border-color); color: var(--bs-body-color); }
-    .btn-light:hover { background-color: var(--bs-tertiary-bg); }
-  `]
+  templateUrl: './confirmar-dialogo.component.html',
+  styleUrls: ['./confirmar-dialogo.component.scss']
 })
 export class ConfirmDialogComponent implements OnInit, OnDestroy {
   /** Referencia al elemento HTML del modal de Bootstrap */

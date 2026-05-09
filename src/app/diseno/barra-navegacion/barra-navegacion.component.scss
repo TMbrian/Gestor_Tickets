@@ -1,0 +1,5 @@
+/** Estilos específicos para la Barra de Navegación superior */
+.navbar {
+  backdrop-filter: blur(8px);
+  background-color: rgba(var(--bs-body-bg-rgb), 0.95) !important;
+}

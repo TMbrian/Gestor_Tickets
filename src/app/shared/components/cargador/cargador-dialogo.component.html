@@ -1,0 +1,13 @@
+<div class="loader-overlay" *ngIf="estado.visible">
+  <div class="loader-card shadow-lg rounded-4 p-5 text-center">
+    <div class="spinner-wrapper mb-4">
+      <div class="spinner-ring"></div>
+      <i class="bi bi-cloud-arrow-up-fill spinner-icon text-primary"></i>
+    </div>
+    <h5 class="fw-bold text-body-emphasis mb-2">{{ estado.mensaje }}</h5>
+    <p class="text-muted small mb-0">Por favor espera un momento...</p>
+    <div class="progress-bar-wrapper mt-4">
+      <div class="progress-bar-animated"></div>
+    </div>
+  </div>
+</div>

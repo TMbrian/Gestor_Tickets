@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { guardAutenticacion } from './core/guards/autenticacion.guard';
 import { ComponenteLogin } from './features/autenticacion/login.component';
-import { ComponenteDiseno } from './diseno/diseno.component';
+import { ComponenteDiseno } from './diseno/principal/diseno.component';
 import { DashboardComponent } from './features/tablero/tablero.component';
 import { ListaTicketsComponent } from './features/tickets/lista-tickets.component';
 import { ComponenteConfiguracion } from './features/configuracion/configuracion.component';

@@ -1,3 +1,3 @@
-export * from './confirmar-dialogo.component';
-export * from './entrada-dialogo.component';
-export * from './cargador-dialogo.component';
+export * from './confirmacion/confirmar-dialogo.component';
+export * from './entrada/entrada-dialogo.component';
+export * from './cargador/cargador-dialogo.component';

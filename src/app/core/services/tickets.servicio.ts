@@ -1,16 +1,7 @@
 import { Injectable } from '@angular/core';
 import {
-  Firestore,
-  collection,
-  doc,
-  docData,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  getDocs,
-  limit
+  Firestore, collection, doc, docData, addDoc, updateDoc,
+  deleteDoc, query, where, getDocs, limit
 } from '@angular/fire/firestore';
 import { Ticket, EstadisticasTicket, EstadoTicket } from '../models';
 import { ServicioAutenticacion } from './autenticacion.service';

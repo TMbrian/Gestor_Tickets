@@ -1,0 +1,144 @@
+<div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary-subtle">
+  <div>
+    <h2 class="fw-bold mb-1 text-body-emphasis d-flex align-items-center">
+      <i class="bi bi-speedometer2 text-primary me-2"></i>
+      Tablero
+    </h2>
+    <p class="text-muted mb-0">Semana {{semanaSeleccionada}}, {{anioSeleccionado}}</p>
+  </div>
+
+  <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center justify-content-center bg-body-tertiary border rounded-3 p-1 shadow-sm">
+      <button class="btn btn-sm btn-light border-0 rounded-2" (click)="cambiarSemana(-1)" title="Semana Anterior">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      <div class="flex-grow-1 text-center px-2">
+        <span class="fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Semana {{
+          semanaSeleccionada }}</span>
+        <span *ngIf="semanaSeleccionada === semanaActual && anioSeleccionado === anioActual" class="badge bg-primary ms-2"
+          style="font-size: 0.6rem;">ACTUAL</span>
+      </div>
+      <button class="btn btn-sm btn-light border-0 rounded-2" (click)="cambiarSemana(1)" title="Semana Siguiente">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+      <button *ngIf="semanaSeleccionada !== semanaActual || anioSeleccionado !== anioActual"
+        class="btn btn-sm btn-link text-decoration-none fw-bold p-1 ms-1" (click)="irASemanaActual()"
+        style="font-size: 0.75rem;">
+        Hoy
+      </button>
+    </div>
+
+    <button class="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm" (click)="refrescarConCargador()">
+      <i class="bi bi-arrow-clockwise me-2"></i> Actualizar
+    </button>
+  </div>
+</div>
+
+<div class="row g-4 mb-4" *ngIf="estadisticas">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100 p-4 rounded-4"
+      style="background: linear-gradient(135deg, var(--bs-primary) 0%, rgba(13,110,253,0.8) 100%); color: white;">
+      <h6 class="text-uppercase fw-bold mb-3 opacity-75" style="letter-spacing: 0.5px;">Total de Tickets</h6>
+      <h1 class="display-3 fw-bolder mb-0 lh-1">{{ estadisticas.total }}</h1>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100 bg-body rounded-4 p-4">
+      <h6 class="text-muted text-uppercase fw-bold mb-3" style="letter-spacing: 0.5px;">Abiertos</h6>
+      <div class="d-flex align-items-center mb-0 mt-auto">
+        <div class="bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3"
+          style="width: 48px; height: 48px;">
+          <i class="bi bi-exclamation-circle-fill text-danger fs-4"></i>
+        </div>
+        <h1 class="fw-bolder mb-0 text-body-emphasis lh-1">{{ estadisticas.porEstado['Abierto'] || 0 }}</h1>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100 bg-body rounded-4 p-4">
+      <h6 class="text-muted text-uppercase fw-bold mb-3" style="letter-spacing: 0.5px;">En Progreso</h6>
+      <div class="d-flex align-items-center mb-0 mt-auto">
+        <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3"
+          style="width: 48px; height: 48px;">
+          <i class="bi bi-arrow-repeat text-warning fs-3"></i>
+        </div>
+        <h1 class="fw-bolder mb-0 text-body-emphasis lh-1">{{ estadisticas.porEstado['En Progreso'] || 0 }}</h1>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100 bg-body rounded-4 p-4">
+      <h6 class="text-muted text-uppercase fw-bold mb-3" style="letter-spacing: 0.5px;">Promedio de Solución</h6>
+      <div class="d-flex flex-column mb-0 mt-auto">
+        <div class="d-flex align-items-baseline gap-2">
+          <h1 class="fw-bolder mb-0 text-success display-5 lh-1">{{ ((estadisticas.promedioTiempoSolucionMins || 0) /
+            60).toFixed(1) }}</h1>
+          <span class="fs-6 text-muted fw-bold">Horas</span>
+        </div>
+        <span class="text-success small fw-semibold mt-2"><i class="bi bi-graph-up me-1"></i> Análisis local de
+          tiempos</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sección de gráficas -->
+<div class="row" *ngIf="estadisticas">
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+      <h6 class="text-uppercase fw-bold mb-4" style="letter-spacing: 0.5px;">Tickets Resueltos por Semana (Histórico)</h6>
+      <div style="height: 300px;">
+        <canvas id="weeklyChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+      <h6 class="text-uppercase fw-bold mb-4" style="letter-spacing: 0.5px;">Distribución de Estado</h6>
+      <div style="height: 300px; position:relative;">
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sección de tickets recientes -->
+<div class="row pt-4" *ngIf="ticketsRecientes.length > 0">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm rounded-4 p-4 text-start">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h6 class="text-uppercase fw-bold mb-0" style="letter-spacing: 0.5px;">Tickets Recientes</h6>
+        <a routerLink="/tickets" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">Ver todos</a>
+      </div>
+      <div class="table-responsive custom-scrollbar">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="border-bottom text-secondary">
+            <tr>
+              <th class="fw-semibold px-3 py-3">TICKET</th>
+              <th class="fw-semibold py-3">ÁREA AFECTADA</th>
+              <th class="fw-semibold py-3">SITIO</th>
+              <th class="fw-semibold py-3">ASIGNACIÓN</th>
+              <th class="fw-semibold py-3">ESTADO</th>
+            </tr>
+          </thead>
+          <tbody class="border-top-0">
+            <tr *ngFor="let ticket of ticketsRecientes">
+              <td class="px-3 py-3"><span class="text-primary fw-bold font-monospace">{{ ticket.numeroTicket }}</span>
+              </td>
+              <td>{{ ticket.areaAfectada }}</td>
+              <td><span class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ ticket.sitio }}</span></td>
+              <td>{{ ticket.fechaAsignacion }}</td>
+              <td>
+                <span class="badge rounded-pill px-3 py-2"
+                  [ngClass]="{'bg-danger': ticket.estado === 'Abierto', 'bg-warning text-dark': ticket.estado === 'En Progreso', 'bg-success': ticket.estado === 'Cerrado'}">{{ticket.estado}}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,83 @@
+/** Estilos específicos para la vista de Autenticación */
+.login-container {
+  background: linear-gradient(135deg, var(--bs-body-bg) 0%, var(--bs-tertiary-bg) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-blob {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: var(--bs-primary);
+  filter: blur(80px);
+  opacity: 0.08;
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.blob-1 {
+  top: -100px;
+  right: -100px;
+}
+
+.blob-2 {
+  bottom: -100px;
+  left: -100px;
+}
+
+.glass-card {
+  background: rgba(var(--bs-body-bg-rgb), 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--bs-primary-rgb), 0.1) !important;
+  border-radius: 28px;
+  z-index: 10;
+}
+
+.form-control {
+  background: rgba(var(--bs-body-bg-rgb), 0.5) !important;
+  border: 1px solid rgba(var(--bs-secondary-rgb), 0.1);
+  height: 60px;
+}
+
+.form-control:focus {
+  background: var(--bs-body-bg) !important;
+  box-shadow: 0 0 0 4px rgba(var(--bs-primary-rgb), 0.15);
+  border-color: var(--bs-primary);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+  border: none;
+}
+
+.hover-primary:hover {
+  color: var(--bs-primary) !important;
+}
+
+.transition {
+  transition: all 0.2s ease;
+}
+
+.alert-success-glass {
+  background: rgba(25, 135, 84, 0.1);
+  color: #198754;
+  border: 1px solid rgba(25, 135, 84, 0.2);
+}
+
+.alert-danger-glass {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.alert-info-glass {
+  background: rgba(13, 110, 253, 0.1);
+  color: #0d6efd;
+  border: 1px solid rgba(13, 110, 253, 0.2);
+}
+
+[data-bs-theme="dark"] .glass-card {
+  background: rgba(33, 37, 41, 0.7);
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}

@@ -1,0 +1,12 @@
+/** Estilos globales para la estructura de Diseño */
+.custom-vh-100 {
+  height: 100vh;
+}
+
+main {
+  background-color: var(--bs-tertiary-bg);
+}
+
+.container-fluid {
+  transition: max-width 0.3s ease;
+}

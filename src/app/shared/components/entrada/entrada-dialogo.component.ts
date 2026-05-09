@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ServicioDialogo, OpcionesPrompt } from '../../core/services/dialogo.service';
+import { ServicioDialogo, OpcionesPrompt } from '../../../core/services/dialogo.service';
 import { Subscription } from 'rxjs';
 
 declare var bootstrap: any;
@@ -21,52 +21,8 @@ declare var bootstrap: any;
   selector: 'app-prompt-dialog',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  template: `
-    <div class="modal fade" #promptModal tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-      <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-          <div class="modal-header border-0 pb-0 pt-4 px-4 d-flex justify-content-center">
-            <div class="rounded-circle bg-opacity-10 d-flex align-items-center justify-content-center"
-                 [ngClass]="'bg-' + opciones.tipo"
-                 style="width: 70px; height: 70px;">
-              <i class="bi fs-2" [ngClass]="obtenerIcono()"></i>
-            </div>
-          </div>
-          <div class="modal-body text-center p-4">
-            <h4 class="fw-bold mb-2 text-body-emphasis">{{ opciones.titulo }}</h4>
-            <p class="text-secondary mb-3">{{ opciones.mensaje }}</p>
-
-            <div class="text-start">
-              <input type="text"
-                     class="form-control form-control-lg rounded-3 border-2 shadow-sm"
-                     [(ngModel)]="valorIngresado"
-                     [placeholder]="opciones.placeholder || ''"
-                     (keyup.enter)="alConfirmar()"
-                     #campoEntrada>
-            </div>
-          </div>
-          <div class="modal-footer border-0 p-4 pt-0 d-flex gap-2">
-            <button type="button" class="btn btn-danger flex-fill rounded-pill py-2 fw-medium" (click)="alCancelar()">
-              {{ opciones.textoCancelar || 'Cancelar' }}
-            </button>
-            <button type="button" class="btn flex-fill rounded-pill py-2 fw-bold shadow-sm"
-                    [ngClass]="'btn-' + opciones.tipo"
-                    [disabled]="!valorIngresado.trim()"
-                    (click)="alConfirmar()">
-              {{ opciones.textoConfirmar || 'Aceptar' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .modal-content { background-color: var(--bs-body-bg); color: var(--bs-body-color); }
-    .form-control:focus {
-      border-color: var(--bs-primary);
-      box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.15);
-    }
-  `]
+  templateUrl: './entrada-dialogo.component.html',
+  styleUrls: ['./entrada-dialogo.component.scss']
 })
 export class PromptDialogComponent implements OnInit, OnDestroy {
   /** Referencia al elemento HTML del modal de Bootstrap */
