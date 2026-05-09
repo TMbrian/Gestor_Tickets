@@ -10,6 +10,7 @@ import { AuthService } from '../../core/services/auth.service';
 declare var bootstrap: any;
 
 import { DateUtils } from '../../core/utils/date-utils';
+import { DialogService } from '../../core/services/dialog.service';
 
 @Component({
   selector: 'app-ticket-list',
@@ -41,6 +42,7 @@ export class TicketListComponent implements OnInit {
     private ticketService: TicketService,
     private exportService: ExportService,
     private catalogService: CatalogService,
+    private dialogService: DialogService,
     private fb: FormBuilder,
     public auth: AuthService
   ) {
@@ -144,8 +146,22 @@ export class TicketListComponent implements OnInit {
 
   async openModal(ticket?: Ticket) {
     if (this.sites.length === 0 || this.areas.length === 0) {
-      alert('Atención: Debes registrar al menos un Sitio y un Área en la sección de Configuración antes de crear tickets.');
+      await this.dialogService.alert({
+        title: 'Configuración Requerida',
+        message: 'Atención: Debes registrar al menos un Sitio y un Área en la sección de Configuración antes de crear tickets.',
+        type: 'warning'
+      });
       return;
+    }
+
+    if (ticket) {
+      const confirmed = await this.dialogService.confirm({
+        title: 'Editar Ticket',
+        message: `¿Deseas editar la información del ticket #${ticket.ticketNumber}?`,
+        type: 'primary',
+        confirmText: 'Editar'
+      });
+      if (!confirmed) return;
     }
 
     if (!this.modalInstance) {
@@ -214,7 +230,11 @@ export class TicketListComponent implements OnInit {
       // 🚨 Check if ticket number already exists for this user
       const existing = await this.ticketService.getTicketByNumber(formValue.ticketNumber);
       if (existing) {
-        alert(`Atención: Ya existe un ticket con el número ${formValue.ticketNumber}. Si deseas modificarlo, búscalo en la lista y selecciona editar.`);
+        await this.dialogService.alert({
+          title: 'Ticket Duplicado',
+          message: `Atención: Ya existe un ticket con el número ${formValue.ticketNumber}. Si deseas modificarlo, búscalo en la lista y selecciona editar.`,
+          type: 'danger'
+        });
         return;
       }
       await this.ticketService.addTicket(formValue as Ticket);
@@ -225,39 +245,77 @@ export class TicketListComponent implements OnInit {
   }
 
   async deleteTicket(id?: string) {
-    if (id && confirm('¿Estás seguro de eliminar este ticket?')) {
-      await this.ticketService.deleteTicket(id);
-      this.loadTickets();
+    if (id) {
+      const confirmed = await this.dialogService.confirm({
+        title: 'Eliminar Ticket',
+        message: '¿Estás seguro de eliminar este ticket?',
+        type: 'danger',
+        confirmText: 'Eliminar'
+      });
+      if (confirmed) {
+        await this.ticketService.deleteTicket(id);
+        this.loadTickets();
+      }
     }
   }
 
-  async downloadTemplate() {
-    await this.ticketService.downloadTemplate();
+  async downloadTemplateWithLoader() {
+    this.dialogService.showLoader('Generando plantilla de importación...');
+    try {
+      await this.ticketService.downloadTemplate();
+      // Small delay to show the loader
+      await new Promise(r => setTimeout(r, 800));
+    } finally {
+      this.dialogService.hideLoader();
+    }
   }
 
-  exportExcel() {
-    this.ticketService.exportToExcel();
+  async exportCurrentWeek() {
+    this.dialogService.showLoader(`Exportando tickets de la Semana ${this.selectedWeek}...`);
+    try {
+      await this.ticketService.exportToExcel(this.selectedWeek);
+      await new Promise(r => setTimeout(r, 800));
+    } finally {
+      this.dialogService.hideLoader();
+    }
   }
 
-  exportCSV() {
-    this.exportService.exportToCSV(this.filteredTickets, 'Historico_Tickets');
+  async exportAll() {
+    this.dialogService.showLoader('Exportando todo el historial de tickets...');
+    try {
+      await this.ticketService.exportToExcel();
+      await new Promise(r => setTimeout(r, 800));
+    } finally {
+      this.dialogService.hideLoader();
+    }
   }
 
   async onFileChange(event: any) {
     const file = event.target.files[0];
     if (file) {
+      this.dialogService.showLoader('Importando tickets desde Excel...');
       try {
         const result = await this.ticketService.importFromExcel(file);
+        this.dialogService.hideLoader();
         this.loadTickets();
         
         let message = `Proceso finalizado.\n- Nuevos: ${result.added}`;
         if (result.skipped > 0) {
           message += `\n- Omitidos (ya existen): ${result.skipped}`;
         }
-        alert(message);
-      } catch (e: any) {
-        console.error('Error importing', e);
-        alert(`Error al importar: ${e.message || 'Error desconocido'}`);
+
+        await this.dialogService.alert({
+          title: 'Resumen de Importación',
+          message: message,
+          type: 'success'
+        });
+      } catch (err: any) {
+        this.dialogService.hideLoader();
+        await this.dialogService.alert({
+          title: 'Error de Importación',
+          message: err.message || 'Error desconocido',
+          type: 'danger'
+        });
       }
       // Reset input file
       event.target.value = null;

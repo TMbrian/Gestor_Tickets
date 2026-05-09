@@ -101,17 +101,18 @@ declare var bootstrap: any;
 
           <!-- Logout -->
           <li class="nav-item">
-            <a href="javascript:void(0)" (click)="logout()" class="nav-link text-danger opacity-75 d-flex align-items-center rounded-3 py-3" [ngClass]="isCollapsed ? 'justify-content-center px-0' : 'px-3'" title="Cerrar Sesión">
-              <i class="bi bi-box-arrow-right fs-5" [ngClass]="!isCollapsed ? 'me-3' : 'me-0'"></i> 
-              <span class="fw-bold" *ngIf="!isCollapsed">Cerrar Sesión</span>
-            </a>
+            <button (click)="logout()" class="btn btn-danger w-100 fw-bold rounded-pill py-2 shadow-sm d-flex align-items-center justify-content-center" [ngClass]="isCollapsed ? 'px-2' : 'px-3'" title="Cerrar Sesión">
+              <i class="bi bi-box-arrow-right fs-5" [ngClass]="!isCollapsed ? 'me-2' : 'me-0'"></i> 
+              <span *ngIf="!isCollapsed">Cerrar Sesión</span>
+            </button>
           </li>
         </ul>
-        
-        <!-- Bottom Info -->
-        <div class="mt-5 pt-3 text-center opacity-25 border-top border-secondary border-opacity-10" *ngIf="!isCollapsed">
-           <small class="text-white font-monospace d-block" style="font-size: 0.6rem;">versión {{version}}</small>
-        </div>
+    </div>
+      
+    <!-- Version Badge - Fixed at bottom -->
+    <div class="mt-auto bg-primary py-2 text-center">
+      <small class="text-white fw-medium" style="font-size: 0.75rem;" *ngIf="!isCollapsed">Versión {{version}}</small>
+      <small class="text-white fw-medium" style="font-size: 0.65rem;" *ngIf="isCollapsed">v{{version}}</small>
     </div>
   `,
   styles: [`

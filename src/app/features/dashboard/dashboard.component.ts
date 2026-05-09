@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TicketService } from '../../core/services/ticket.service';
+import { DialogService } from '../../core/services/dialog.service';
 import { TicketStatistics } from '../../core/models/ticket.model';
 import Chart from 'chart.js/auto';
 
@@ -13,23 +14,29 @@ import Chart from 'chart.js/auto';
     <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary-subtle">
       <div>
         <h2 class="fw-bold mb-1 text-body-emphasis">Dashboard</h2>
-        <p class="text-muted mb-0">Semana {{currentWeek}}, {{currentYear}}</p>
+        <p class="text-muted mb-0">Semana {{selectedWeek}}, {{selectedYear}}</p>
       </div>
       
-      <div class="d-flex align-items-center gap-2">
-        <div class="btn-group shadow-sm me-3">
-          <button class="btn btn-outline-secondary px-3 py-2" (click)="changeWeek(-1)" title="Semana Anterior">
+      <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center justify-content-center bg-body-tertiary border rounded-3 p-1 shadow-sm">
+          <button class="btn btn-sm btn-light border-0 rounded-2" (click)="changeWeek(-1)" title="Semana Anterior">
             <i class="bi bi-chevron-left"></i>
           </button>
-          <button class="btn btn-outline-secondary px-4 py-2 fw-bold bg-body" style="min-width: 150px;">
-            Semana {{currentWeek}}
-          </button>
-          <button class="btn btn-outline-secondary px-3 py-2" (click)="changeWeek(1)" title="Semana Siguiente">
+          <div class="flex-grow-1 text-center px-2">
+            <span class="fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Semana {{ selectedWeek }}</span>
+            <span *ngIf="selectedWeek === actualWeek && selectedYear === actualYear" class="badge bg-primary ms-2"
+              style="font-size: 0.6rem;">ACTUAL</span>
+          </div>
+          <button class="btn btn-sm btn-light border-0 rounded-2" (click)="changeWeek(1)" title="Semana Siguiente">
             <i class="bi bi-chevron-right"></i>
+          </button>
+          <button *ngIf="selectedWeek !== actualWeek || selectedYear !== actualYear" class="btn btn-sm btn-link text-decoration-none fw-bold p-1 ms-1"
+            (click)="goToCurrentWeek()" style="font-size: 0.75rem;">
+            Hoy
           </button>
         </div>
         
-        <button class="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm" (click)="loadStats()">
+        <button class="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm" (click)="refreshWithLoader()">
           <i class="bi bi-arrow-clockwise me-2"></i> Actualizar
         </button>
       </div>
@@ -144,21 +151,25 @@ export class DashboardComponent implements OnInit {
   statusChart: any = null;
   recentTickets: any[] = [];
   
-  currentWeek: number = 1;
-  currentYear: number = new Date().getFullYear();
+  selectedWeek: number = 1;
+  selectedYear: number = new Date().getFullYear();
+  actualWeek: number = 1;
+  actualYear: number = new Date().getFullYear();
 
-  constructor(private ticketService: TicketService) {}
+  constructor(private ticketService: TicketService, private dialogService: DialogService) {}
 
   ngOnInit() {
     const now = new Date();
     const iso = this.calculateISOWeek(now);
-    this.currentWeek = iso.week;
-    this.currentYear = iso.year;
+    this.actualWeek = iso.week;
+    this.actualYear = iso.year;
+    this.selectedWeek = this.actualWeek;
+    this.selectedYear = this.actualYear;
     this.loadStats();
   }
 
   async loadStats() {
-    this.stats = await this.ticketService.getStatistics(this.currentWeek, this.currentYear);
+    this.stats = await this.ticketService.getStatistics(this.selectedWeek, this.selectedYear);
     const all = await this.ticketService.getTickets();
     
     // Determine recent tickets (sort by createdAt or id descending)
@@ -167,12 +178,30 @@ export class DashboardComponent implements OnInit {
     this.renderChart(all);
   }
 
+  async refreshWithLoader() {
+    this.dialogService.showLoader('Actualizando datos del Dashboard...');
+    const start = Date.now();
+    try {
+      await this.loadStats();
+      const elapsed = Date.now() - start;
+      if (elapsed < 3000) await new Promise(r => setTimeout(r, 3000 - elapsed));
+    } finally {
+      this.dialogService.hideLoader();
+    }
+  }
+
   changeWeek(delta: number) {
-    let date = this.getDateFromWeek(this.currentWeek, this.currentYear);
+    let date = this.getDateFromWeek(this.selectedWeek, this.selectedYear);
     date.setDate(date.getDate() + (delta * 7));
     const iso = this.calculateISOWeek(date);
-    this.currentWeek = iso.week;
-    this.currentYear = iso.year;
+    this.selectedWeek = iso.week;
+    this.selectedYear = iso.year;
+    this.loadStats();
+  }
+
+  goToCurrentWeek() {
+    this.selectedWeek = this.actualWeek;
+    this.selectedYear = this.actualYear;
     this.loadStats();
   }
 

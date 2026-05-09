@@ -16,9 +16,8 @@ import { DialogService } from '../../core/services/dialog.service';
         <h2 class="fw-bold mb-1 text-body-emphasis">Configuración de Catálogos</h2>
         <p class="text-muted mb-0">Administra los Sitios y Áreas disponibles para los tickets.</p>
       </div>
-      <button class="btn btn-outline-primary rounded-pill px-4 shadow-sm" (click)="syncFromTickets()" [disabled]="isSyncing">
-        <i class="bi" [ngClass]="isSyncing ? 'bi-arrow-repeat spin' : 'bi-arrow-clockwise'"></i>
-        Sincronizar desde Tickets
+      <button class="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm" (click)="syncFromTickets()" [disabled]="isSyncing">
+        <i class="bi bi-arrow-clockwise me-2"></i> Sincronizar desde Tickets
       </button>
     </div>
 
@@ -117,25 +116,55 @@ export class SettingsComponent implements OnInit {
 
   async syncFromTickets() {
     this.isSyncing = true;
+    this.dialogService.showLoader('Sincronizando catálogos desde tickets...');
+    const start = Date.now();
     try {
       const tickets = await this.ticketService.getTickets();
       if (tickets.length === 0) {
-        alert('No se encontraron tickets previos para sincronizar.');
+        // Esperar mínimo 3 segundos
+        const elapsed = Date.now() - start;
+        if (elapsed < 3000) await new Promise(r => setTimeout(r, 3000 - elapsed));
+        this.dialogService.hideLoader();
+        await this.dialogService.alert({
+          title: 'Sin Datos',
+          message: 'No se encontraron tickets previos para sincronizar.',
+          type: 'warning'
+        });
       } else {
         const result = await this.catalogService.autoPopulateFromTickets(tickets);
         await this.loadData();
-        alert(`Sincronización completada.\n- Nuevos Sitios: ${result.sitesAdded}\n- Nuevas Áreas: ${result.areasAdded}`);
+        // Esperar mínimo 3 segundos
+        const elapsed = Date.now() - start;
+        if (elapsed < 3000) await new Promise(r => setTimeout(r, 3000 - elapsed));
+        this.dialogService.hideLoader();
+        await this.dialogService.alert({
+          title: 'Sincronización Exitosa',
+          message: `Proceso completado.\n- Nuevos Sitios: ${result.sitesAdded}\n- Nuevas Áreas: ${result.areasAdded}`,
+          type: 'success'
+        });
       }
     } catch (err) {
       console.error(err);
-      alert('Error durante la sincronización.');
+      this.dialogService.hideLoader();
+      await this.dialogService.alert({
+        title: 'Error',
+        message: 'Ocurrió un fallo durante la sincronización.',
+        type: 'danger'
+      });
     } finally {
       this.isSyncing = false;
     }
   }
 
   async addSite() {
-    const name = prompt('Nombre del Sitio (CEDI):');
+    const name = await this.dialogService.prompt({
+      title: 'Nuevo Sitio (CEDI)',
+      message: 'Ingresa el nombre del nuevo sitio para el catálogo:',
+      placeholder: 'Ej: CEDI Monterrey',
+      type: 'primary',
+      confirmText: 'Registrar'
+    });
+    
     if (name && name.trim()) {
       await this.catalogService.addSite(name.trim());
       this.loadData();
@@ -144,9 +173,21 @@ export class SettingsComponent implements OnInit {
 
   async editSite(site: Site) {
     const oldName = site.name;
-    const newName = prompt('Editar nombre del Sitio:', oldName);
+    const newName = await this.dialogService.prompt({
+      title: 'Editar Sitio',
+      message: `Modifica el nombre del sitio "${oldName}":`,
+      defaultValue: oldName,
+      type: 'primary',
+      confirmText: 'Actualizar'
+    });
+
     if (newName && newName.trim() && newName !== oldName) {
-      const confirmed = confirm(`¿Deseas actualizar el nombre a "${newName}"? Todos los tickets existentes asociados a "${oldName}" también serán actualizados automáticamente.`);
+      const confirmed = await this.dialogService.confirm({
+        title: 'Confirmar Cambio',
+        message: `¿Deseas actualizar el nombre a "${newName}"? Todos los tickets existentes asociados a "${oldName}" también serán actualizados automáticamente.`,
+        type: 'warning',
+        confirmText: 'Actualizar Todo'
+      });
       if (confirmed) {
         await this.catalogService.updateSite(site.id!, newName.trim());
         await this.ticketService.bulkUpdateSiteName(oldName, newName.trim());
@@ -158,18 +199,35 @@ export class SettingsComponent implements OnInit {
   async deleteSite(site: Site) {
     const count = await this.ticketService.countTicketsBySite(site.name);
     if (count > 0) {
-      alert(`No se puede eliminar el sitio "${site.name}" porque está asociado a ${count} ticket(s). Favor de validar.`);
+      await this.dialogService.alert({
+        title: 'Acción Bloqueada',
+        message: `No se puede eliminar el sitio "${site.name}" porque está asociado a ${count} ticket(s). Favor de validar.`,
+        type: 'danger'
+      });
       return;
     }
 
-    if (confirm(`¿Estás seguro de eliminar el sitio "${site.name}"?`)) {
+    const confirmed = await this.dialogService.confirm({
+      title: 'Eliminar Sitio',
+      message: `¿Estás seguro de eliminar el sitio "${site.name}"?`,
+      type: 'danger',
+      confirmText: 'Eliminar'
+    });
+    if (confirmed) {
       await this.catalogService.deleteSite(site.id!);
       this.loadData();
     }
   }
 
   async addArea() {
-    const name = prompt('Nombre del Área:');
+    const name = await this.dialogService.prompt({
+      title: 'Nueva Área Afectada',
+      message: 'Ingresa el nombre de la nueva área para el catálogo:',
+      placeholder: 'Ej: Redes / Conectividad',
+      type: 'success',
+      confirmText: 'Registrar'
+    });
+
     if (name && name.trim()) {
       await this.catalogService.addArea(name.trim());
       this.loadData();
@@ -178,9 +236,21 @@ export class SettingsComponent implements OnInit {
 
   async editArea(area: Area) {
     const oldName = area.name;
-    const newName = prompt('Editar nombre del Área:', oldName);
+    const newName = await this.dialogService.prompt({
+      title: 'Editar Área',
+      message: `Modifica el nombre de la categoría "${oldName}":`,
+      defaultValue: oldName,
+      type: 'success',
+      confirmText: 'Actualizar'
+    });
+
     if (newName && newName.trim() && newName !== oldName) {
-      const confirmed = confirm(`¿Deseas actualizar el nombre a "${newName}"? Todos los tickets existentes asociados a "${oldName}" también serán actualizados automáticamente.`);
+      const confirmed = await this.dialogService.confirm({
+        title: 'Confirmar Cambio',
+        message: `¿Deseas actualizar el nombre a "${newName}"? Todos los tickets existentes asociados a "${oldName}" también serán actualizados automáticamente.`,
+        type: 'warning',
+        confirmText: 'Actualizar Todo'
+      });
       if (confirmed) {
         await this.catalogService.updateArea(area.id!, newName.trim());
         await this.ticketService.bulkUpdateAreaName(oldName, newName.trim());
@@ -192,13 +262,23 @@ export class SettingsComponent implements OnInit {
   async deleteArea(area: Area) {
     const count = await this.ticketService.countTicketsByArea(area.name);
     if (count > 0) {
-      alert(`No se puede eliminar el área "${area.name}" porque está asociada a ${count} ticket(s). Favor de validar.`);
+      await this.dialogService.alert({
+        title: 'Acción Bloqueada',
+        message: `No se puede eliminar el área "${area.name}" porque está asociada a ${count} ticket(s). Favor de validar.`,
+        type: 'danger'
+      });
       return;
     }
 
-    if (confirm(`¿Estás seguro de eliminar el área "${area.name}"?`)) {
+    const confirmed = await this.dialogService.confirm({
+      title: 'Eliminar Área',
+      message: `¿Estás seguro de eliminar el área "${area.name}"?`,
+      type: 'danger',
+      confirmText: 'Eliminar'
+    });
+    if (confirmed) {
       await this.catalogService.deleteArea(area.id!);
-      await this.loadData();
+      this.loadData();
     }
   }
 }

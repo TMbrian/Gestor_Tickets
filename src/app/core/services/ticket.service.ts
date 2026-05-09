@@ -135,8 +135,13 @@ export class TicketService {
     return stats;
   }
 
-  async exportToExcel(): Promise<void> {
-    const tickets = await this.getTickets();
+  async exportToExcel(weekFilter?: number): Promise<void> {
+    let tickets = await this.getTickets();
+    
+    if (weekFilter !== undefined) {
+      tickets = tickets.filter(t => t.week === weekFilter);
+    }
+
     const mapped = tickets.map(t => ({
       'Número de Ticket': t.ticketNumber,
       'Semana': t.week,
@@ -151,34 +156,130 @@ export class TicketService {
       'Número RFC': t.rfcNumber || '',
       'Fecha Cierre': t.closeDate || '',
       'Hora Cierre': t.closeTime || '',
-      'Solución Mins (Calc)': t.solutionTimeMins || 0
+      'Solución Hrs': t.solutionTimeMins ? (t.solutionTimeMins / 60).toFixed(1) : '0'
     }));
+
     const worksheet = XLSX.utils.json_to_sheet(mapped);
+
+    // Estilos de ancho de columna
+    worksheet['!cols'] = [
+      { wch: 18 }, // Ticket
+      { wch: 10 }, // Semana
+      { wch: 16 }, // Fecha Asignación
+      { wch: 16 }, // Hora Asignación
+      { wch: 20 }, // Sitio
+      { wch: 22 }, // Área
+      { wch: 40 }, // Descripción
+      { wch: 14 }, // Estado
+      { wch: 18 }, // Asignado
+      { wch: 14 }, // RFC
+      { wch: 16 }, // Número RFC
+      { wch: 16 }, // Fecha Cierre
+      { wch: 16 }, // Hora Cierre
+      { wch: 14 }, // Solución
+    ];
+
     const workbook = XLSX.utils.book_new();
+    const weekLabel = weekFilter ? `Semana_${weekFilter}` : 'Historial_Completo';
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Histórico');
-    XLSX.writeFile(workbook, 'Historico_Tickets.xlsx');
+    XLSX.writeFile(workbook, `Tickets_${weekLabel}.xlsx`);
   }
 
   async downloadTemplate(): Promise<void> {
-    const templateData = [{
-      'Número de Ticket': '12345',
-      'Semana': 1,
-      'Fecha Asignación': '2026-01-01',
-      'Hora Asignación': '08:00',
-      'Sitio/CEDI': 'CEDI Central',
-      'Área Afectada': 'Sistemas',
-      'Descripción': 'Descripción del problema aquí',
-      'Estado': 'Abierto',
-      'Asignado Oficialmente': 'SI',
-      'Emergente RFC': 'NO',
-      'Número RFC': '',
-      'Fecha Cierre': '',
-      'Hora Cierre': ''
-    }];
+    const templateData = [
+      {
+        'Número de Ticket': '12345',
+        'Semana': 19,
+        'Fecha Asignación': '2026-05-05',
+        'Hora Asignación': '08:00',
+        'Sitio/CEDI': 'CEDI Monterrey',
+        'Área Afectada': 'Redes / Conectividad',
+        'Descripción': 'Sin conexión a la red en el edificio A, planta baja',
+        'Estado': 'Abierto',
+        'Asignado Oficialmente': 'SI',
+        'Emergente RFC': 'NO',
+        'Número RFC': '',
+        'Fecha Cierre': '',
+        'Hora Cierre': ''
+      },
+      {
+        'Número de Ticket': '12346',
+        'Semana': 19,
+        'Fecha Asignación': '2026-05-05',
+        'Hora Asignación': '09:30',
+        'Sitio/CEDI': 'CEDI CDMX',
+        'Área Afectada': 'Hardware',
+        'Descripción': 'Pantalla del monitor con líneas verticales en estación de trabajo #15',
+        'Estado': 'Cerrado',
+        'Asignado Oficialmente': 'SI',
+        'Emergente RFC': 'NO',
+        'Número RFC': '',
+        'Fecha Cierre': '2026-05-06',
+        'Hora Cierre': '14:00'
+      },
+      {
+        'Número de Ticket': '12347',
+        'Semana': 19,
+        'Fecha Asignación': '2026-05-06',
+        'Hora Asignación': '11:15',
+        'Sitio/CEDI': 'CEDI Guadalajara',
+        'Área Afectada': 'Software / Aplicaciones',
+        'Descripción': 'Error al ejecutar el módulo de facturación electrónica',
+        'Estado': 'En Progreso',
+        'Asignado Oficialmente': 'NO',
+        'Emergente RFC': 'SI',
+        'Número RFC': 'RFC-EMR-0045',
+        'Fecha Cierre': '',
+        'Hora Cierre': ''
+      }
+    ];
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const dataSheet = XLSX.utils.json_to_sheet(templateData);
+
+    // Anchos de columna profesionales
+    dataSheet['!cols'] = [
+      { wch: 18 }, { wch: 10 }, { wch: 16 }, { wch: 16 },
+      { wch: 22 }, { wch: 24 }, { wch: 45 }, { wch: 14 },
+      { wch: 20 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 16 }
+    ];
+
+    // Hoja de instrucciones
+    const instrucciones = [
+      ['📋 INSTRUCCIONES DE USO - Plantilla de Importación de Tickets'],
+      [''],
+      ['1. Usa la hoja "Plantilla_Importacion" para llenar tus datos.'],
+      ['2. NO modifiques los nombres de las columnas (encabezados).'],
+      ['3. Elimina las filas de ejemplo antes de importar.'],
+      [''],
+      ['📌 CAMPOS OBLIGATORIOS:'],
+      ['   • Número de Ticket (solo números)'],
+      ['   • Semana (1-53)'],
+      ['   • Fecha Asignación (formato: YYYY-MM-DD)'],
+      ['   • Hora Asignación (formato: HH:MM)'],
+      ['   • Sitio/CEDI'],
+      ['   • Área Afectada'],
+      ['   • Descripción'],
+      ['   • Estado (Abierto, En Progreso, Cerrado)'],
+      [''],
+      ['📌 CAMPOS OPCIONALES:'],
+      ['   • Asignado Oficialmente (SI / NO)'],
+      ['   • Emergente RFC (SI / NO)'],
+      ['   • Número RFC (texto libre)'],
+      ['   • Fecha Cierre (formato: YYYY-MM-DD)'],
+      ['   • Hora Cierre (formato: HH:MM)'],
+      [''],
+      ['⚠️ NOTAS IMPORTANTES:'],
+      ['   • Los tickets con número duplicado serán OMITIDOS automáticamente.'],
+      ['   • El tiempo de solución se calcula automáticamente si hay fecha/hora de cierre.'],
+      ['   • Si un Sitio o Área no existe en los catálogos, se creará automáticamente.']
+    ];
+
+    const instrSheet = XLSX.utils.aoa_to_sheet(instrucciones);
+    instrSheet['!cols'] = [{ wch: 75 }];
+
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Plantilla_Importacion');
+    XLSX.utils.book_append_sheet(workbook, instrSheet, 'Instrucciones');
+    XLSX.utils.book_append_sheet(workbook, dataSheet, 'Plantilla_Importacion');
     XLSX.writeFile(workbook, 'Plantilla_Tickets.xlsx');
   }
 

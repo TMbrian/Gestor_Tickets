@@ -14,19 +14,21 @@ declare var bootstrap: any;
       <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
           <div class="modal-header border-0 pb-0 pt-4 px-4 d-flex justify-content-center">
-            <div class="rounded-circle bg-opacity-10 p-3" [ngClass]="'bg-' + options.type">
+            <div class="rounded-circle bg-opacity-10 d-flex align-items-center justify-content-center" 
+                 [ngClass]="'bg-' + options.type" 
+                 style="width: 80px; height: 80px;">
               <i class="bi fs-1" [ngClass]="getIcon()"></i>
             </div>
           </div>
           <div class="modal-body text-center p-4">
-            <h4 class="fw-bold mb-2">{{ options.title }}</h4>
+            <h4 class="fw-bold mb-2 text-body-emphasis">{{ options.title }}</h4>
             <p class="text-secondary mb-0">{{ options.message }}</p>
           </div>
           <div class="modal-footer border-0 p-4 pt-0 d-flex gap-2">
-            <button type="button" class="btn btn-light flex-fill rounded-pill py-2 fw-medium" (click)="onDecline()">
+            <button *ngIf="!options.isAlert" type="button" class="btn btn-danger flex-fill rounded-pill py-2 fw-medium" (click)="onDecline()">
               {{ options.cancelText || 'Cancelar' }}
             </button>
-            <button type="button" class="btn flex-fill rounded-pill py-2 fw-bold shadow-sm" [ngClass]="'btn-' + options.type" (click)="onConfirm()">
+            <button type="button" class="btn btn-primary flex-fill rounded-pill py-2 fw-bold shadow-sm" (click)="onConfirm()">
               {{ options.confirmText || 'Aceptar' }}
             </button>
           </div>
