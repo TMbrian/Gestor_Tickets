@@ -392,6 +392,81 @@ export class ListaTicketsComponent implements OnInit {
     this.cargarTickets();
   }
 
+  // ---------------------------------------------------------------------------
+  // Acciones rápidas (sin modal)
+  // ---------------------------------------------------------------------------
+
+  private fechaHoyStr(): string {
+    const h = new Date();
+    return `${h.getFullYear()}-${(h.getMonth() + 1).toString().padStart(2, '0')}-${h.getDate().toString().padStart(2, '0')}`;
+  }
+
+  private horaAhoraStr(): string {
+    return new Date().toTimeString().slice(0, 5);
+  }
+
+  async iniciarSolucion(ticket: Ticket) {
+    const ahora = new Date();
+    await this.servicioTickets.actualizarTicket(ticket.id!, {
+      estado: 'En Progreso',
+      fechaInicioSolucion: this.fechaHoyStr(),
+      horaInicioSolucion: this.horaAhoraStr(),
+      semanaInicioSolucion: this.calcularSemanaIso(ahora)
+    });
+    this.cargarTickets();
+  }
+
+  async pausarTicket(ticket: Ticket) {
+    await this.servicioTickets.actualizarTicket(ticket.id!, { estado: 'Pausado' });
+    this.cargarTickets();
+  }
+
+  async reanudarTicket(ticket: Ticket) {
+    await this.servicioTickets.actualizarTicket(ticket.id!, { estado: 'En Progreso' });
+    this.cargarTickets();
+  }
+
+  async cerrarTicketRapido(ticket: Ticket) {
+    const confirmado = await this.servicioDialogo.confirmar({
+      titulo: 'Cerrar Ticket',
+      mensaje: `¿Confirmas el cierre del ticket #${ticket.numeroTicket}? Se registrará la hora actual.`,
+      tipo: 'success',
+      textoConfirmar: 'Cerrar Ahora'
+    });
+    if (!confirmado) return;
+    const ahora = new Date();
+    await this.servicioTickets.actualizarTicket(ticket.id!, {
+      estado: 'Cerrado',
+      fechaCierre: this.fechaHoyStr(),
+      horaCierre: this.horaAhoraStr(),
+      semanaCierre: this.calcularSemanaIso(ahora)
+    });
+    this.cargarTickets();
+  }
+
+  async reabrirTicket(ticket: Ticket) {
+    const confirmado = await this.servicioDialogo.confirmar({
+      titulo: 'Reabrir Ticket',
+      mensaje: `¿Reabres el ticket #${ticket.numeroTicket}? Se borrarán los datos de cierre y el tiempo acumulado.`,
+      tipo: 'warning',
+      textoConfirmar: 'Reabrir'
+    });
+    if (!confirmado) return;
+    await this.servicioTickets.actualizarTicket(ticket.id!, {
+      estado: 'Abierto',
+      fechaCierre: null,
+      horaCierre: null,
+      semanaCierre: null,
+      fechaInicioSolucion: null,
+      horaInicioSolucion: null,
+      semanaInicioSolucion: null,
+      tiempoSolucionMins: null,
+      tiempoPausaMins: 0,
+      ultimaPausaInicio: null
+    });
+    this.cargarTickets();
+  }
+
   /**
    * Elimina un ticket previa confirmación del usuario.
    *

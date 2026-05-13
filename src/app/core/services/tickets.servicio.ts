@@ -160,34 +160,31 @@ export class ServicioTickets {
   async actualizarTicket(id: string, cambios: Partial<Ticket>): Promise<void> {
     cambios.actualizadoEn = Date.now();
 
-    // Recalcula el tiempo de solución si se modificó alguna fecha u hora
-    const afectaFechas = cambios.fechaAsignacion !== undefined
+    // Fetch ticket cuando cualquier campo de lógica de negocio cambia
+    const necesitaTicketActual = cambios.estado !== undefined
+      || cambios.fechaAsignacion !== undefined
       || cambios.horaAsignacion !== undefined
+      || cambios.fechaInicioSolucion !== undefined
+      || cambios.horaInicioSolucion !== undefined
       || cambios.fechaCierre !== undefined
       || cambios.horaCierre !== undefined;
 
-    if (afectaFechas || cambios.estado === 'Cerrado') {
+    if (necesitaTicketActual) {
       const ticketActual = await this.obtenerTicket(id);
       if (ticketActual) {
-        let ticketMergeado = { ...ticketActual, ...cambios } as Ticket;
-
-        // Gestión de la lógica de pausa al cambiar de estado
+        // Gestión de pausas: aplica siempre que cambie el estado, sin importar si cambian fechas
         if (cambios.estado !== undefined && cambios.estado !== ticketActual.estado) {
-          // Si entra en pausa
           if (cambios.estado === 'Pausado') {
             cambios.ultimaPausaInicio = Date.now();
-          }
-          // Si sale de pausa (a cualquier otro estado)
-          else if (ticketActual.estado === 'Pausado' && ticketActual.ultimaPausaInicio) {
+          } else if (ticketActual.estado === 'Pausado' && ticketActual.ultimaPausaInicio) {
             const diffMins = Math.round((Date.now() - ticketActual.ultimaPausaInicio) / 60000);
             cambios.tiempoPausaMins = (ticketActual.tiempoPausaMins || 0) + diffMins;
             cambios.ultimaPausaInicio = null;
-            // Actualizar el mergeado para que el cálculo de solución use el tiempo de pausa acumulado
-            ticketMergeado.tiempoPausaMins = cambios.tiempoPausaMins;
-            ticketMergeado.ultimaPausaInicio = null;
           }
         }
 
+        // Recalcular tiempo de solución con el estado combinado
+        const ticketMergeado = { ...ticketActual, ...cambios } as Ticket;
         cambios.tiempoSolucionMins = this.calcularTiempoSolucion(ticketMergeado);
       }
     }
@@ -219,19 +216,19 @@ export class ServicioTickets {
    * @returns Minutos de resolución (mínimo 0) o `null` si los datos son incompletos.
    */
   calcularTiempoSolucion(ticket: Ticket): number | null {
-    if (!ticket.fechaCierre || !ticket.horaCierre || !ticket.fechaAsignacion || !ticket.horaAsignacion) {
-      return null;
-    }
+    if (!ticket.fechaCierre || !ticket.horaCierre) return null;
 
-    const inicio = new Date(`${ticket.fechaAsignacion}T${ticket.horaAsignacion}`);
+    // Usar inicio de solución si existe; si no, caer en la fecha de asignación
+    const fechaInicio = ticket.fechaInicioSolucion || ticket.fechaAsignacion;
+    const horaInicio = ticket.horaInicioSolucion || ticket.horaAsignacion;
+    if (!fechaInicio || !horaInicio) return null;
+
+    const inicio = new Date(`${fechaInicio}T${horaInicio}`);
     const fin = new Date(`${ticket.fechaCierre}T${ticket.horaCierre}`);
-
     if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) return null;
 
     const diferenciaTotalMins = Math.round((fin.getTime() - inicio.getTime()) / 60000);
-    const tiempoPausa = ticket.tiempoPausaMins || 0;
-
-    return Math.max(0, diferenciaTotalMins - tiempoPausa);
+    return Math.max(0, diferenciaTotalMins - (ticket.tiempoPausaMins || 0));
   }
 
   /**

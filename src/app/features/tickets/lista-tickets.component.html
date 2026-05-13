@@ -160,15 +160,74 @@
                  'bg-success': ticket.estado === 'Cerrado'
               }">{{ ticket.estado }}</span>
             </td>
-            <td *ngIf="auth.esAdmin" class="text-end pe-3">
-              <button class="btn btn-sm btn-light border shadow-sm me-2 text-primary rounded-circle"
-                (click)="abrirModal(ticket)" title="Editar" aria-label="Editar ticket">
-                <i class="bi bi-pencil-square" aria-hidden="true"></i>
-              </button>
-              <button class="btn btn-sm btn-light border shadow-sm text-danger rounded-circle"
-                (click)="eliminarTicket(ticket.id)" title="Eliminar" aria-label="Eliminar ticket">
-                <i class="bi bi-trash" aria-hidden="true"></i>
-              </button>
+            <td *ngIf="auth.esAdmin" class="text-end pe-3" style="white-space: nowrap;">
+              <ng-container [ngSwitch]="ticket.estado">
+
+                <!-- Abierto: Iniciar + Editar + Eliminar -->
+                <ng-container *ngSwitchCase="'Abierto'">
+                  <button class="btn btn-sm btn-success border shadow-sm me-1 rounded-circle"
+                    (click)="iniciarSolucion(ticket)" title="Iniciar Solución" aria-label="Iniciar solución">
+                    <i class="bi bi-play-fill" aria-hidden="true"></i>
+                  </button>
+                  <button class="btn btn-sm btn-light border shadow-sm me-1 text-primary rounded-circle"
+                    (click)="abrirModal(ticket)" title="Editar" aria-label="Editar ticket">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                  </button>
+                  <button class="btn btn-sm btn-light border shadow-sm text-danger rounded-circle"
+                    (click)="eliminarTicket(ticket.id)" title="Eliminar" aria-label="Eliminar ticket">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </button>
+                </ng-container>
+
+                <!-- En Progreso: Pausar + Cerrar + Editar -->
+                <ng-container *ngSwitchCase="'En Progreso'">
+                  <button class="btn btn-sm btn-warning border shadow-sm me-1 rounded-circle"
+                    (click)="pausarTicket(ticket)" title="Pausar" aria-label="Pausar ticket">
+                    <i class="bi bi-pause-fill" aria-hidden="true"></i>
+                  </button>
+                  <button class="btn btn-sm btn-success border shadow-sm me-1 rounded-circle"
+                    (click)="cerrarTicketRapido(ticket)" title="Cerrar Ticket" aria-label="Cerrar ticket">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                  </button>
+                  <button class="btn btn-sm btn-light border shadow-sm text-primary rounded-circle"
+                    (click)="abrirModal(ticket)" title="Editar Detalles" aria-label="Editar ticket">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                  </button>
+                </ng-container>
+
+                <!-- Pausado: Reanudar + Cerrar + Editar -->
+                <ng-container *ngSwitchCase="'Pausado'">
+                  <button class="btn btn-sm btn-primary border shadow-sm me-1 rounded-circle"
+                    (click)="reanudarTicket(ticket)" title="Reanudar" aria-label="Reanudar ticket">
+                    <i class="bi bi-play-fill" aria-hidden="true"></i>
+                  </button>
+                  <button class="btn btn-sm btn-success border shadow-sm me-1 rounded-circle"
+                    (click)="cerrarTicketRapido(ticket)" title="Cerrar Ticket" aria-label="Cerrar ticket">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                  </button>
+                  <button class="btn btn-sm btn-light border shadow-sm text-primary rounded-circle"
+                    (click)="abrirModal(ticket)" title="Editar Detalles" aria-label="Editar ticket">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                  </button>
+                </ng-container>
+
+                <!-- Cerrado: Reabrir + Editar + Eliminar -->
+                <ng-container *ngSwitchCase="'Cerrado'">
+                  <button class="btn btn-sm btn-outline-secondary border shadow-sm me-1 rounded-circle"
+                    (click)="reabrirTicket(ticket)" title="Reabrir Ticket" aria-label="Reabrir ticket">
+                    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                  </button>
+                  <button class="btn btn-sm btn-light border shadow-sm me-1 text-primary rounded-circle"
+                    (click)="abrirModal(ticket)" title="Editar" aria-label="Editar ticket">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                  </button>
+                  <button class="btn btn-sm btn-light border shadow-sm text-danger rounded-circle"
+                    (click)="eliminarTicket(ticket.id)" title="Eliminar" aria-label="Eliminar ticket">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </button>
+                </ng-container>
+
+              </ng-container>
             </td>
           </tr>
           <tr *ngIf="ticketsFiltrados.length === 0">
