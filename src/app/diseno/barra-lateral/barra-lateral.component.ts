@@ -41,8 +41,8 @@ export class ComponenteBarraLateral {
   constructor(
     public servicioAuth: ServicioAutenticacion,
     public servicioTema: ServicioTema,
-    private servicioDialogo: ServicioDialogo,
-    private enrutador: Router
+    private readonly servicioDialogo: ServicioDialogo,
+    private readonly enrutador: Router
   ) { }
 
   /**

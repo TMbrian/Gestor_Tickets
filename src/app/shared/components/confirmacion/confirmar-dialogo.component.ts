@@ -47,7 +47,7 @@ export class ConfirmDialogComponent implements OnInit, OnDestroy {
    * @param servicioDialogo - Servicio centralizado de diálogos del que se
    *                          escucha el estado del diálogo de confirmación.
    */
-  constructor(private servicioDialogo: ServicioDialogo) { }
+  constructor(private readonly servicioDialogo: ServicioDialogo) { }
 
   /**
    * Hook de ciclo de vida que se suscribe al observable `estadoDialogo$`.

@@ -55,8 +55,8 @@ export class DashboardComponent implements OnInit {
    * @param servicioDialogo - Servicio para mostrar diálogos y el loader global.
    */
   constructor(
-    private servicioTickets: ServicioTickets,
-    private servicioDialogo: ServicioDialogo
+    private readonly servicioTickets: ServicioTickets,
+    private readonly servicioDialogo: ServicioDialogo
   ) { }
 
   /**
@@ -207,8 +207,8 @@ export class DashboardComponent implements OnInit {
       const semanas: any = {};
 
       ticketsCerrados.forEach(ticket => {
-        const fechaAsignacion = new Date(ticket.fechaAsignacion!);
-        if (isNaN(fechaAsignacion.getTime())) return;
+        const fechaAsignacion = new Date(ticket.fechaAsignacion);
+        if (Number.isNaN(fechaAsignacion.getTime())) return;
 
         // Calcular semana ISO de la fecha de asignación
         const numeroSemana = UtilidadesFecha.calcularSemanaISO(fechaAsignacion);
@@ -231,8 +231,8 @@ export class DashboardComponent implements OnInit {
       const etiquetas = Object.keys(semanas).sort((a, b) => {
         const [semA, anioA] = a.replace('Sem ', '').split(' - ');
         const [semB, anioB] = b.replace('Sem ', '').split(' - ');
-        if (anioA !== anioB) return parseInt(anioA) - parseInt(anioB);
-        return parseInt(semA) - parseInt(semB);
+        if (anioA !== anioB) return Number.parseInt(anioA, 10) - Number.parseInt(anioB, 10);
+        return Number.parseInt(semA, 10) - Number.parseInt(semB, 10);
       });
 
       const datosConteo = etiquetas.map(etiqueta => semanas[etiqueta].count);

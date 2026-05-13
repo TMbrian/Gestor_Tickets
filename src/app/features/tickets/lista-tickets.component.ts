@@ -8,7 +8,7 @@ import {
 import { Ticket, Sitio, Area } from '../../core/models';
 import { UtilidadesFecha } from '../../core/utils/utilidades-fecha';
 
-declare var bootstrap: any;
+
 
 /**
  * Componente que despliega el listado de tickets filtrado por semana ISO.
@@ -59,11 +59,8 @@ export class ListaTicketsComponent implements OnInit {
   /** Número de la semana ISO real (la del día de hoy) */
   semanaActual: number = 1;
 
-  /** Referencia al elemento HTML del modal de Bootstrap */
-  @ViewChild('ticketModal') referenciaModalTicket!: ElementRef;
-
-  /** Instancia del modal de Bootstrap creada al abrirlo por primera vez */
-  instanciaModal: any;
+  /** Referencia al elemento HTML del modal nativo */
+  @ViewChild('ticketModal') referenciaModalTicket!: ElementRef<HTMLDialogElement>;
 
   /**
    * Constructor del componente.
@@ -76,12 +73,12 @@ export class ListaTicketsComponent implements OnInit {
    * @param auth                  - Servicio de autenticación expuesto público para uso desde la plantilla.
    */
   constructor(
-    private servicioTickets: ServicioTickets,
-    private servicioExportacion: ServicioExportacion,
-    private servicioCatalogos: ServicioCatalogos,
-    private servicioDialogo: ServicioDialogo,
-    private fb: FormBuilder,
-    public auth: ServicioAutenticacion
+    private readonly servicioTickets: ServicioTickets,
+    private readonly servicioExportacion: ServicioExportacion,
+    private readonly servicioCatalogos: ServicioCatalogos,
+    private readonly servicioDialogo: ServicioDialogo,
+    private readonly fb: FormBuilder,
+    public readonly auth: ServicioAutenticacion
   ) {
     this.inicializarFormulario();
   }
@@ -93,7 +90,14 @@ export class ListaTicketsComponent implements OnInit {
    * Si la semana actual no contiene tickets pero existen tickets en otras
    * semanas, salta automáticamente a la semana más reciente con datos.
    */
-  async ngOnInit() {
+  ngOnInit() {
+    this.inicializarDatos();
+  }
+
+  /**
+   * Inicialización asíncrona de los datos.
+   */
+  private async inicializarDatos() {
     this.semanaActual = UtilidadesFecha.calcularSemanaISO(new Date());
     this.semanaSeleccionada = this.semanaActual;
     await this.cargarTickets();
@@ -174,8 +178,12 @@ export class ListaTicketsComponent implements OnInit {
       semana: [1, [Validators.required, Validators.min(1), Validators.max(53)]],
       fechaAsignacion: ['', Validators.required],
       horaAsignacion: ['', Validators.required],
+      fechaInicioSolucion: [''],
+      horaInicioSolucion: [''],
+      semanaInicioSolucion: [{ value: '', disabled: true }],
       fechaCierre: [''],
       horaCierre: [''],
+      semanaCierre: [{ value: '', disabled: true }],
       estaAsignado: [false],
       esRfc: [false],
       numeroRfc: ['', Validators.maxLength(30)],
@@ -189,10 +197,30 @@ export class ListaTicketsComponent implements OnInit {
     this.formularioTicket.get('fechaAsignacion')?.valueChanges.subscribe(valor => {
       if (valor) {
         const [anio, mes, dia] = valor.split('-').map(Number);
-        const fechaLocal = new Date(anio, mes - 1, dia); // Fecha LOCAL (no UTC)
+        const fechaLocal = new Date(anio, mes - 1, dia);
+        this.formularioTicket.patchValue({ semana: this.calcularSemanaIso(fechaLocal) }, { emitEvent: false });
+      }
+    });
 
-        const semana = this.calcularSemanaIso(fechaLocal);
-        this.formularioTicket.patchValue({ semana: semana }, { emitEvent: false });
+    // Auto-calcular semana de inicio de solución
+    this.formularioTicket.get('fechaInicioSolucion')?.valueChanges.subscribe(valor => {
+      if (valor) {
+        const [anio, mes, dia] = valor.split('-').map(Number);
+        const fechaLocal = new Date(anio, mes - 1, dia);
+        this.formularioTicket.patchValue({ semanaInicioSolucion: this.calcularSemanaIso(fechaLocal) }, { emitEvent: false });
+      } else {
+        this.formularioTicket.patchValue({ semanaInicioSolucion: '' }, { emitEvent: false });
+      }
+    });
+
+    // Auto-calcular semana de cierre
+    this.formularioTicket.get('fechaCierre')?.valueChanges.subscribe(valor => {
+      if (valor) {
+        const [anio, mes, dia] = valor.split('-').map(Number);
+        const fechaLocal = new Date(anio, mes - 1, dia);
+        this.formularioTicket.patchValue({ semanaCierre: this.calcularSemanaIso(fechaLocal) }, { emitEvent: false });
+      } else {
+        this.formularioTicket.patchValue({ semanaCierre: '' }, { emitEvent: false });
       }
     });
   }
@@ -220,16 +248,21 @@ export class ListaTicketsComponent implements OnInit {
    * completa de tickets y actualiza `ticketsFiltrados`.
    */
   aplicarFiltros() {
+    const textoBuscado = this.textoBusqueda.toLowerCase();
+
     this.ticketsFiltrados = this.tickets.filter(ticket => {
       // Coincidencia por texto: busca el término en cualquier propiedad del ticket
-      const coincideTexto = Object.values(ticket as any).some((valor: any) =>
-        valor !== undefined && valor !== null &&
-        String(valor).toLowerCase().includes(this.textoBusqueda.toLowerCase())
-      );
+      const coincideTexto = Object.entries(ticket).some(([key, valor]) => {
+        if (valor === undefined || valor === null) return false;
+        return String(valor).toLowerCase().includes(textoBuscado);
+      });
+
       // Coincidencia por estado: si no hay filtro, todos pasan
-      const coincideEstado = this.filtroEstado ? ticket.estado === this.filtroEstado : true;
+      const coincideEstado = !this.filtroEstado || ticket.estado === this.filtroEstado;
+
       // Coincidencia por semana ISO seleccionada
       const coincideSemana = ticket.semana === this.semanaSeleccionada;
+
       return coincideTexto && coincideEstado && coincideSemana;
     });
   }
@@ -263,10 +296,7 @@ export class ListaTicketsComponent implements OnInit {
       if (!confirmado) return;
     }
 
-    // Lazy-init del modal de Bootstrap la primera vez que se abre
-    if (!this.instanciaModal) {
-      this.instanciaModal = new bootstrap.Modal(this.referenciaModalTicket.nativeElement);
-    }
+
 
     if (ticket) {
       this.modoEdicion = true;
@@ -304,23 +334,31 @@ export class ListaTicketsComponent implements OnInit {
       const semana = this.calcularSemanaIso(hoy);
 
       this.formularioTicket.reset({
-        status: 'Abierto',
-        isAssigned: false,
+        estado: 'Abierto',
+        estaAsignado: false,
         esRfc: false,
         fechaAsignacion: fechaHoy,
         horaAsignacion: horaTexto,
-        week: semana
+        semana: semana,
+        fechaInicioSolucion: '',
+        horaInicioSolucion: '',
+        semanaInicioSolucion: '',
+        fechaCierre: '',
+        horaCierre: '',
+        semanaCierre: '',
+        sitio: '',
+        areaAfectada: ''
       });
     }
 
-    this.instanciaModal.show();
+    this.referenciaModalTicket.nativeElement.showModal();
   }
 
   /**
    * Cierra el modal de tickets si existe la instancia.
    */
   cerrarModal() {
-    this.instanciaModal?.hide();
+    this.referenciaModalTicket.nativeElement.close();
   }
 
   /**
@@ -332,7 +370,7 @@ export class ListaTicketsComponent implements OnInit {
    */
   async guardarTicket() {
     if (this.formularioTicket.invalid) return;
-    const valoresFormulario = this.formularioTicket.value;
+    const valoresFormulario = this.formularioTicket.getRawValue();
 
     if (this.modoEdicion && this.idEdicionActual) {
       await this.servicioTickets.actualizarTicket(this.idEdicionActual, valoresFormulario);
@@ -419,14 +457,11 @@ export class ListaTicketsComponent implements OnInit {
   /**
    * Maneja la selección de un archivo Excel para importación masiva de tickets.
    *
-   * Procesa el archivo, recarga los tickets y muestra un resumen con la
-   * cantidad de tickets agregados y omitidos (duplicados). Si ocurre un
-   * error durante la importación, lo muestra en un diálogo de error.
-   *
-   * @param evento - Evento `change` del input file con el archivo seleccionado.
+   * @param evento - Evento de cambio del input file.
    */
-  async alCambiarArchivo(evento: any) {
-    const archivo = evento.target.files[0];
+  async alCambiarArchivo(evento: Event) {
+    const input = evento.target as HTMLInputElement;
+    const archivo = input.files?.[0];
     if (archivo) {
       this.servicioDialogo.mostrarCargador('Importando tickets desde Excel...');
       try {
@@ -453,7 +488,7 @@ export class ListaTicketsComponent implements OnInit {
         });
       }
       // Reiniciar el input para permitir volver a seleccionar el mismo archivo
-      evento.target.value = null;
+      input.value = '';
     }
   }
 }

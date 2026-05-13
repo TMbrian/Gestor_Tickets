@@ -25,8 +25,8 @@ export class ServicioTickets {
    * @param servicioAutenticacion  - Servicio de autenticación para obtener el usuario activo.
    */
   constructor(
-    private firestore: Firestore,
-    private servicioAutenticacion: ServicioAutenticacion
+    private readonly firestore: Firestore,
+    private readonly servicioAutenticacion: ServicioAutenticacion
   ) { }
 
   // ---------------------------------------------------------------------------
@@ -68,24 +68,29 @@ export class ServicioTickets {
       return {
         id: documento.id,
         numeroTicket: data.numeroTicket || data.ticketNumber || '',
-        semana: data.semana !== undefined ? data.semana : (data.week || 1),
+        semana: data.semana ?? data.week ?? 1,
         fechaAsignacion: data.fechaAsignacion || data.assignmentDate || '',
         horaAsignacion: data.horaAsignacion || data.assignmentTime || '',
         fechaCierre: data.fechaCierre || data.closeDate || null,
         horaCierre: data.horaCierre || data.closeTime || null,
-        tiempoSolucionMins: data.tiempoSolucionMins !== undefined ? data.tiempoSolucionMins : (data.solutionTimeMins || null),
-        estaAsignado: data.estaAsignado !== undefined ? data.estaAsignado : (data.isAssigned || false),
-        esRfc: data.esRfc !== undefined ? data.esRfc : (data.isRfc || false),
+        semanaCierre: data.semanaCierre ?? null,
+        fechaInicioSolucion: data.fechaInicioSolucion ?? null,
+        horaInicioSolucion: data.horaInicioSolucion ?? null,
+        semanaInicioSolucion: data.semanaInicioSolucion ?? null,
+        tiempoSolucionMins: data.tiempoSolucionMins ?? data.solutionTimeMins ?? null,
+        estaAsignado: data.estaAsignado ?? data.isAssigned ?? false,
+        esRfc: data.esRfc ?? data.isRfc ?? false,
         numeroRfc: data.numeroRfc || data.rfcNumber || null,
         sitio: data.sitio || data.site || '',
         areaAfectada: data.areaAfectada || data.affectedArea || '',
         descripcion: data.descripcion || data.description || '',
         estado: data.estado || data.status || 'Abierto',
-        tiempoPausaMins: data.tiempoPausaMins || 0,
+
+        tiempoPausaMins: data.tiempoPausaMins ?? 0,
         ultimaPausaInicio: data.ultimaPausaInicio || null,
         idUsuario: data.idUsuario || '',
-        creadoEn: data.creadoEn || data.createdAt || Date.now(),
-        actualizadoEn: data.actualizadoEn || data.updatedAt || Date.now()
+        creadoEn: data.creadoEn ?? data.createdAt ?? Date.now(),
+        actualizadoEn: data.actualizadoEn ?? data.updatedAt ?? Date.now()
       } as Ticket;
     });
   }
@@ -221,7 +226,7 @@ export class ServicioTickets {
     const inicio = new Date(`${ticket.fechaAsignacion}T${ticket.horaAsignacion}`);
     const fin = new Date(`${ticket.fechaCierre}T${ticket.horaCierre}`);
 
-    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) return null;
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) return null;
 
     const diferenciaTotalMins = Math.round((fin.getTime() - inicio.getTime()) / 60000);
     const tiempoPausa = ticket.tiempoPausaMins || 0;
@@ -245,10 +250,10 @@ export class ServicioTickets {
       filtrados = todos.filter(ticket => {
         if (!ticket.fechaAsignacion) return false;
         const fecha = new Date(ticket.fechaAsignacion);
-        if (isNaN(fecha.getTime())) return false;
+        if (Number.isNaN(fecha.getTime())) return false;
 
         // Cálculo de semana ISO 8601
-        const fechaNormalizada = new Date(fecha.getTime());
+        const fechaNormalizada = new Date(fecha);
         fechaNormalizada.setHours(0, 0, 0, 0);
         fechaNormalizada.setDate(fechaNormalizada.getDate() + 3 - (fechaNormalizada.getDay() + 6) % 7);
         const primeraSemana = new Date(fechaNormalizada.getFullYear(), 0, 4);

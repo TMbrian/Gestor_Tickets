@@ -101,7 +101,7 @@ export class ComponenteDiseno {
     }
 
     // Valida que la contraseña cumpla el mínimo de seguridad requerido
-    const patronContrasena = /^(?=.*[A-Z])(?=.*[0-9])(?=.{8,}).*$/;
+    const patronContrasena = /^(?=.*[A-Z])(?=.*\d)(?=.{8,}).*$/;
     if (this.nuevaContrasena && !patronContrasena.test(this.nuevaContrasena)) {
       this.errorPerfil = 'La contraseña debe tener 8 caracteres, 1 mayúscula y 1 número.';
       return;

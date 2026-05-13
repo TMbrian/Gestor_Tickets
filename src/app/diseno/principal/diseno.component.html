@@ -26,59 +26,111 @@
 <app-loader-dialog></app-loader-dialog>
 
 <!-- Modal de perfil global (fuera de contextos de z-index limitados) -->
-<div class="modal fade" id="modalPerfil" tabindex="-1" aria-hidden="true" style="z-index: 2000;">
+<div class="modal fade" id="modalPerfil" tabindex="-1" aria-labelledby="modalPerfilLabel" aria-hidden="true"
+  style="z-index: 2000;">
   <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
     <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
 
       <div class="modal-header border-bottom-0 px-4">
-        <h5 class="modal-title fw-bold text-body-emphasis">Mi Perfil</h5>
+        <h5 class="modal-title fw-bold text-body-emphasis" id="modalPerfilLabel">Mi Perfil</h5>
         <!-- Botón oculto para cerrar el modal programáticamente tras guardar -->
-        <button type="button" id="btnCerrarModalPerfil" data-bs-dismiss="modal" class="d-none"></button>
+        <button type="button" id="btnCerrarModalPerfil" data-bs-dismiss="modal" class="d-none"
+          aria-label="Cerrar modal de perfil"></button>
       </div>
 
-      <div class="modal-body p-4">
-        <!-- Campo de nombre de usuario -->
-        <div class="mb-3">
-          <label class="form-label fw-bold text-secondary">Usuario</label>
-          <div class="input-group">
-            <span class="input-group-text border-end-0 bg-body"><i class="bi bi-person"></i></span>
-            <input type="text" class="form-control border-start-0 border-end-0" [(ngModel)]="nuevoNombreUsuario">
-            <span class="input-group-text border-start-0 bg-body small text-muted">@comasw.com</span>
+      <form autocomplete="off" (ngSubmit)="guardarPerfil()" #formPerfil="ngForm" novalidate>
+
+        <div class="modal-body p-4">
+
+          <!-- ============================================== -->
+          <!-- CAMPO: NOMBRE DE USUARIO                       -->
+          <!-- ============================================== -->
+          <div class="mb-4">
+            <label for="inputNombreUsuario" class="form-label fw-bold text-secondary">Usuario</label>
+            <div class="input-group position-relative">
+              <span class="input-group-text border-end-0 bg-body" aria-hidden="true">
+                <i class="bi bi-person"></i>
+              </span>
+              <input type="text" id="inputNombreUsuario" name="nombreUsuario"
+                class="form-control border-start-0 border-end-0" [(ngModel)]="nuevoNombreUsuario" placeholder="Usuario"
+                maxlength="20" autocomplete="nickname" aria-describedby="contadorNombreUsuario sufijoCorreo">
+              <span id="sufijoCorreo"
+                class="input-group-text border-start-0 bg-body small text-muted">&#64;comasw.com</span>
+
+              <!-- Contador de caracteres flotante -->
+              <span id="contadorNombreUsuario" class="position-absolute small opacity-50 fw-medium"
+                style="bottom: -1.1rem; right: 0.25rem; font-size: 0.65rem; pointer-events: none;" aria-live="polite">
+                {{ nuevoNombreUsuario.length || 0 }}/20
+              </span>
+            </div>
           </div>
-        </div>
 
-        <!-- Campo de nueva contraseña con toggle de visibilidad -->
-        <div class="mb-3">
-          <label class="form-label fw-bold text-secondary">Nueva Contraseña</label>
-          <div class="input-group">
-            <span class="input-group-text border-end-0 bg-body"><i class="bi bi-lock"></i></span>
-            <input [type]="mostrarContrasena ? 'text' : 'password'" class="form-control border-start-0 border-end-0"
-              [(ngModel)]="nuevaContrasena" placeholder="Dejar en blanco para no cambiar">
-            <button class="btn btn-outline-secondary border-start-0" type="button"
-              (click)="mostrarContrasena = !mostrarContrasena">
-              <i class="bi" [ngClass]="mostrarContrasena ? 'bi-eye-slash' : 'bi-eye'"></i>
-            </button>
+          <!-- ============================================== -->
+          <!-- CAMPO: NUEVA CONTRASEÑA                        -->
+          <!-- Se renderizan DOS inputs estáticos según el    -->
+          <!-- estado de "mostrarContrasena" para que el      -->
+          <!-- atributo "type" no sea dinámico (S6840 strict) -->
+          <!-- ============================================== -->
+          <div class="mb-3">
+            <label for="inputNuevaContrasena" class="form-label fw-bold text-secondary">Nueva Contraseña</label>
+            <div class="input-group position-relative">
+              <span class="input-group-text border-end-0 bg-body" aria-hidden="true">
+                <i class="bi bi-lock"></i>
+              </span>
+
+              <!-- Modo oculto -->
+              <input *ngIf="!mostrarContrasena" type="password" id="inputNuevaContrasena" name="nuevaContrasena"
+                class="form-control border-start-0 border-end-0" [(ngModel)]="nuevaContrasena"
+                placeholder="Nueva contraseña" maxlength="30" autocomplete="new-password"
+                aria-describedby="contadorContrasena ayudaContrasena">
+
+              <!-- Modo visible -->
+              <input *ngIf="mostrarContrasena" type="text" id="inputNuevaContrasenaVisible"
+                name="nuevaContrasenaVisible" class="form-control border-start-0 border-end-0"
+                [(ngModel)]="nuevaContrasena" placeholder="Nueva contraseña" maxlength="30" autocomplete="off"
+                aria-describedby="contadorContrasena ayudaContrasena">
+
+              <!-- Botón mostrar/ocultar -->
+              <button type="button" class="btn btn-outline-secondary border-start-0"
+                (click)="mostrarContrasena = !mostrarContrasena"
+                [attr.aria-label]="mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                [attr.aria-pressed]="mostrarContrasena"
+                [title]="mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                <i class="bi" [ngClass]="mostrarContrasena ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
+              </button>
+
+              <!-- Contador de caracteres flotante -->
+              <span id="contadorContrasena" class="position-absolute small opacity-50 fw-medium"
+                style="bottom: -1.1rem; right: 0.25rem; font-size: 0.65rem; pointer-events: none;" aria-live="polite">
+                {{ nuevaContrasena.length || 0 }}/30
+              </span>
+            </div>
+            <small id="ayudaContrasena" class="form-text text-muted mt-2 d-block" style="font-size: 0.7rem;">
+              Mínimo 8 caracteres, 1 mayúscula y 1 número.
+            </small>
           </div>
+
+          <!-- Mensajes de error y éxito del guardado de perfil -->
+          <div *ngIf="errorPerfil" class="alert alert-danger py-2 small border-0 shadow-sm mt-3" role="alert">
+            {{ errorPerfil }}
+          </div>
+          <output *ngIf="exitoPerfil" class="alert alert-success py-2 small border-0 shadow-sm mt-3 d-block">
+            {{ exitoPerfil }}
+          </output>
         </div>
 
-        <!-- Mensajes de error y éxito del guardado de perfil -->
-        <div *ngIf="errorPerfil" class="alert alert-danger py-2 small border-0 shadow-sm">
-          {{ errorPerfil }}
+        <div class="modal-footer border-0 pt-0 gap-3">
+          <button type="button" class="btn btn-danger w-100 fw-bold rounded-pill py-2 shadow-sm"
+            data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1" aria-hidden="true"></i> Cancelar
+          </button>
+          <button *ngIf="tieneCambios()" type="submit"
+            class="btn btn-primary w-100 fw-bold rounded-pill py-2 shadow-sm">
+            <i class="bi bi-check-circle me-1" aria-hidden="true"></i> Actualizar Datos
+          </button>
         </div>
-        <div *ngIf="exitoPerfil" class="alert alert-success py-2 small border-0 shadow-sm">
-          {{ exitoPerfil }}
-        </div>
-      </div>
 
-      <div class="modal-footer border-0 pt-0 gap-3">
-        <button class="btn btn-danger w-100 fw-bold rounded-pill py-2 shadow-sm" data-bs-dismiss="modal">
-          <i class="bi bi-x-circle me-1"></i> Cancelar
-        </button>
-        <button *ngIf="tieneCambios()" class="btn btn-primary w-100 fw-bold rounded-pill py-2 shadow-sm"
-          (click)="guardarPerfil()">
-          <i class="bi bi-check-circle me-1"></i> Actualizar Datos
-        </button>
-      </div>
+      </form>
     </div>
   </div>
 </div>

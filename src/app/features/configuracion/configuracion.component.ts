@@ -30,19 +30,19 @@ export class ComponenteConfiguracion implements OnInit {
   estaSincronizando = false;
 
   /**
-   * @param servicioCatalogos - Servicio para gestionar sitios y áreas en Firestore.
-   * @param servicioTickets   - Servicio de tickets para validar integridad referencial.
-   * @param servicioDialogo   - Servicio para mostrar alertas, confirmaciones y prompts.
-   */
+ * @param servicioCatalogos - Servicio para gestionar sitios y áreas en Firestore.
+ * @param servicioTickets   - Servicio de tickets para validar integridad referencial.
+ * @param servicioDialogo   - Servicio para mostrar alertas, confirmaciones y prompts.
+ */
   constructor(
-    private servicioCatalogos: ServicioCatalogos,
-    private servicioTickets: ServicioTickets,
-    private servicioDialogo: ServicioDialogo
+    private readonly servicioCatalogos: ServicioCatalogos,
+    private readonly servicioTickets: ServicioTickets,
+    private readonly servicioDialogo: ServicioDialogo
   ) { }
 
   /** Carga los catálogos al inicializar el componente */
-  async ngOnInit(): Promise<void> {
-    await this.cargarDatos();
+  ngOnInit(): void {
+    void this.cargarDatos();
   }
 
   /**

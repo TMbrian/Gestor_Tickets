@@ -28,6 +28,18 @@ export interface Ticket {
   /** Hora de cierre del ticket en formato HH:mm; `null` si sigue abierto */
   horaCierre: string | null;
 
+  /** Semana ISO del cierre; `null` si sigue abierto */
+  semanaCierre?: number | null;
+
+  /** Fecha en que se inició la atención/solución del ticket en formato YYYY-MM-DD */
+  fechaInicioSolucion?: string | null;
+
+  /** Hora en que se inició la atención/solución del ticket en formato HH:mm */
+  horaInicioSolucion?: string | null;
+
+  /** Semana ISO correspondiente a la fecha de inicio de solución */
+  semanaInicioSolucion?: number | null;
+
   /**
    * Tiempo total de resolución expresado en minutos.
    * Se calcula automáticamente al registrar el cierre del ticket.
