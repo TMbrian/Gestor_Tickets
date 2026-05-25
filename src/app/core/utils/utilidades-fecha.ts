@@ -40,6 +40,23 @@ export class UtilidadesFecha {
   }
 
   /**
+   * Calcula el Año ISO 8601 correspondiente a una fecha dada.
+   * Aplica la misma regla de negocio de desplazar el fin de semana.
+   */
+  static calcularAnioISO(fecha: Date): number {
+    const d = new Date(fecha);
+    const diaDelAnio = d.getDay();
+    if (diaDelAnio === 6) { d.setDate(d.getDate() + 2); } 
+    else if (diaDelAnio === 0) { d.setDate(d.getDate() + 1); }
+
+    const fechaUTC = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const diaSemana = fechaUTC.getUTCDay() || 7;
+    fechaUTC.setUTCDate(fechaUTC.getUTCDate() + 4 - diaSemana);
+
+    return fechaUTC.getUTCFullYear();
+  }
+
+  /**
    * Retorna la fecha actual del sistema en formato `YYYY-MM-DD`.
    * Formato requerido por los campos `fechaAsignacion` y `fechaCierre` del modelo `Ticket`.
    *

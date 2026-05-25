@@ -16,6 +16,9 @@ export interface Ticket {
   /** Número de semana del año en que fue registrado el ticket */
   semana: number;
 
+  /** Año ISO correspondiente a la fecha de asignación */
+  anioISO?: number;
+
   /** Fecha de asignación del ticket en formato YYYY-MM-DD */
   fechaAsignacion: string;
 

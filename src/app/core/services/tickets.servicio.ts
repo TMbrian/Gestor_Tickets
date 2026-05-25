@@ -7,6 +7,8 @@ import { Ticket, EstadisticasTicket, EstadoTicket } from '../models';
 import { ServicioAutenticacion } from './autenticacion.service';
 import { firstValueFrom } from 'rxjs';
 import * as XLSX from 'xlsx';
+import { UtilidadesFecha } from '../utils/utilidades-fecha';
+import { ExcelParser } from '../utils/excel-parser';
 
 /**
  * Servicio principal para la gestión de tickets de soporte técnico.
@@ -68,7 +70,8 @@ export class ServicioTickets {
       return {
         id: documento.id,
         numeroTicket: data.numeroTicket || data.ticketNumber || '',
-        semana: data.semana ?? data.week ?? 1,
+        semana: data.semana ?? data.week ?? UtilidadesFecha.calcularSemanaISO(new Date(`${data.fechaAsignacion || new Date().toISOString().split('T')[0]}T00:00:00`)),
+        anioISO: data.anioISO ?? UtilidadesFecha.calcularAnioISO(new Date(`${data.fechaAsignacion || new Date().toISOString().split('T')[0]}T00:00:00`)),
         fechaAsignacion: data.fechaAsignacion || data.assignmentDate || '',
         horaAsignacion: data.horaAsignacion || data.assignmentTime || '',
         fechaCierre: data.fechaCierre || data.closeDate || null,
@@ -141,6 +144,9 @@ export class ServicioTickets {
   async agregarTicket(ticket: Ticket): Promise<string> {
     ticket.idUsuario = this.idUsuarioActual;
     ticket.tiempoSolucionMins = this.calcularTiempoSolucion(ticket);
+    const fechaAsigDate = new Date(`${ticket.fechaAsignacion}T00:00:00`);
+    ticket.anioISO = ticket.anioISO || UtilidadesFecha.calcularAnioISO(fechaAsigDate);
+    ticket.semana = ticket.semana || UtilidadesFecha.calcularSemanaISO(fechaAsigDate);
     ticket.creadoEn = Date.now();
     ticket.actualizadoEn = Date.now();
 
@@ -249,16 +255,9 @@ export class ServicioTickets {
         const fecha = new Date(ticket.fechaAsignacion);
         if (Number.isNaN(fecha.getTime())) return false;
 
-        // Cálculo de semana ISO 8601
-        const fechaNormalizada = new Date(fecha);
-        fechaNormalizada.setHours(0, 0, 0, 0);
-        fechaNormalizada.setDate(fechaNormalizada.getDate() + 3 - (fechaNormalizada.getDay() + 6) % 7);
-        const primeraSemana = new Date(fechaNormalizada.getFullYear(), 0, 4);
-        const semanaISO = 1 + Math.round(
-          ((fechaNormalizada.getTime() - primeraSemana.getTime()) / 86400000
-            - 3 + (primeraSemana.getDay() + 6) % 7) / 7
-        );
-        const anioISO = fechaNormalizada.getFullYear();
+        // Cálculo centralizado de semana y año ISO
+        const semanaISO = UtilidadesFecha.calcularSemanaISO(fecha);
+        const anioISO = UtilidadesFecha.calcularAnioISO(fecha);
         return semanaISO === semana && anioISO === anio;
       });
     }
@@ -464,79 +463,29 @@ export class ServicioTickets {
       lector.onload = async (evento) => {
         try {
           const bytesArchivo = new Uint8Array((evento.target as any).result);
-          const libroDeTrabajo = XLSX.read(bytesArchivo, {
-            type: 'array',
-            cellDates: true,
-            dateNF: 'yyyy-mm-dd'
-          });
-
-          const nombrePrimeraHoja = libroDeTrabajo.SheetNames[0];
-          const primeraHoja = libroDeTrabajo.Sheets[nombrePrimeraHoja];
-          const filas: any[] = XLSX.utils.sheet_to_json(primeraHoja, { raw: false });
-
+          
           let contadorAgregados = 0;
           let contadorOmitidos = 0;
 
-          for (const fila of filas) {
-            /**
-             * Búsqueda flexible de columnas: normaliza los encabezados del archivo
-             * para soportar variantes con o sin acentos y distintos formatos.
-             */
-            const obtenerValor = (claves: string[]) => {
-              const claveEncontrada = Object.keys(fila).find(k =>
-                claves.includes(k.trim().toLowerCase()) || claves.includes(k.trim())
-              );
-              return claveEncontrada ? fila[claveEncontrada] : null;
-            };
+          const ticketsParseados = ExcelParser.parsearBufferTickets(bytesArchivo, this.idUsuarioActual);
 
-            const numeroTicket = obtenerValor([
-              'número de ticket', 'numero de ticket', 'ticket', 'id', 'ticketnumber'
-            ]);
-            if (!numeroTicket) continue;
+            for (const ticketImportado of ticketsParseados) {
+              ticketImportado.tiempoSolucionMins = this.calcularTiempoSolucion(ticketImportado);
 
-            // Mapeo de la fila del Excel al modelo interno de Ticket
-            const ticketImportado: Ticket = {
-              numeroTicket: String(numeroTicket).trim(),
-              idUsuario: this.idUsuarioActual,
-              semana: Number(obtenerValor(['semana', 'week']) || 1),
-              fechaAsignacion: obtenerValor(['fecha asignación', 'fecha asignacion', 'fecha', 'assignmentdate'])
-                || new Date().toISOString().split('T')[0],
-              horaAsignacion: obtenerValor(['hora asignación', 'hora asignacion', 'hora', 'assignmenttime'])
-                || '08:00',
-              sitio: obtenerValor(['sitio/cedi', 'sitio', 'cedi', 'site']) || 'N/A',
-              areaAfectada: obtenerValor(['área afectada', 'area afectada', 'área', 'area', 'affectedarea']) || 'N/A',
-              descripcion: obtenerValor(['descripción', 'descripcion', 'description']) || '-',
-              estado: (obtenerValor(['estado', 'status']) || 'Abierto') as EstadoTicket,
-              estaAsignado: String(obtenerValor(['asignado oficialmente', 'asignado', 'isassigned']))
-                .toUpperCase().includes('SI')
-                || obtenerValor(['isassigned']) === true,
-              esRfc: String(obtenerValor(['emergente rfc', 'rfc', 'isrfc']))
-                .toUpperCase().includes('SI')
-                || obtenerValor(['isrfc']) === true,
-              numeroRfc: obtenerValor(['número rfc', 'numero rfc', 'rfcnumber']) || null,
-              fechaCierre: obtenerValor(['fecha cierre', 'closedate']) || null,
-              horaCierre: obtenerValor(['hora cierre', 'closetime']) || null,
-              tiempoSolucionMins: null,
-              creadoEn: Date.now(),
-              actualizadoEn: Date.now()
-            };
-
-            ticketImportado.tiempoSolucionMins = this.calcularTiempoSolucion(ticketImportado);
-
-            try {
-              const ticketExistente = await this.obtenerTicketPorNumero(ticketImportado.numeroTicket);
-              if (ticketExistente) {
-                contadorOmitidos++;
-              } else {
-                await this.agregarTicket(ticketImportado);
-                contadorAgregados++;
+              try {
+                const ticketExistente = await this.obtenerTicketPorNumero(ticketImportado.numeroTicket);
+                if (ticketExistente) {
+                  contadorOmitidos++;
+                } else {
+                  await this.agregarTicket(ticketImportado);
+                  contadorAgregados++;
+                }
+              } catch (errorTicket: any) {
+                throw new Error(`Error en el ticket #${ticketImportado.numeroTicket}: ${errorTicket.message}`);
               }
-            } catch (errorTicket: any) {
-              throw new Error(`Error en el ticket #${ticketImportado.numeroTicket}: ${errorTicket.message}`);
             }
-          }
 
-          resolver({ agregados: contadorAgregados, omitidos: contadorOmitidos });
+            resolver({ agregados: contadorAgregados, omitidos: contadorOmitidos });
         } catch (error: any) {
           rechazar(error);
         }
