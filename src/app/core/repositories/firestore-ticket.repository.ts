@@ -98,10 +98,10 @@ export class FirestoreTicketRepository implements ITicketRepository {
     return this.normalizarTicket(d.id, d.data());
   }
 
-  async agregarTicket(ticket: Ticket): Promise<string> {
+  async agregarTicket(ticket: Ticket): Promise<Ticket> {
     const datos = this.limpiarUndefined(ticket);
     const ref = await addDoc(this.coleccion(), datos);
-    return ref.id;
+    return { ...ticket, id: ref.id };
   }
 
   async actualizarTicket(id: string, cambios: Partial<Ticket>): Promise<void> {

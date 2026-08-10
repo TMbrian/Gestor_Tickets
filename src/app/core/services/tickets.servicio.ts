@@ -1,11 +1,11 @@
 import { Injectable, Inject } from '@angular/core';
 import * as XLSX from 'xlsx';
 import { Ticket, EstadisticasTicket, EstadoTicket } from '../models/ticket.modelo';
+import { ITicketRepository } from '../models/ticket.repository';
 import { TICKET_REPOSITORY_TOKEN } from '../models/repositorios.tokens';
 import { ServicioAutenticacion } from './autenticacion.service';
 import { UtilidadesFecha } from '../utils/utilidades-fecha';
 import { ExcelParser } from '../utils/excel-parser';
-import { FirestoreTicketRepository } from '../repositories/firestore-ticket.repository';
 
 /**
  * Servicio de dominio para la gestión de tickets de soporte técnico.
@@ -22,7 +22,7 @@ import { FirestoreTicketRepository } from '../repositories/firestore-ticket.repo
 export class ServicioTickets {
 
   constructor(
-    @Inject(TICKET_REPOSITORY_TOKEN) private readonly repo: FirestoreTicketRepository,
+    @Inject(TICKET_REPOSITORY_TOKEN) private readonly repo: ITicketRepository,
     private readonly servicioAutenticacion: ServicioAutenticacion
   ) {}
 
@@ -54,7 +54,7 @@ export class ServicioTickets {
    * Enriquece el ticket con metadatos calculados (usuario, tiempos ISO, timestamps)
    * y luego lo persiste vía repositorio.
    */
-  async agregarTicket(ticket: Ticket): Promise<string> {
+  async agregarTicket(ticket: Ticket): Promise<Ticket> {
     ticket.idUsuario       = this.idUsuarioActual;
     ticket.tiempoSolucionMins = this.calcularTiempoSolucion(ticket);
     const fechaDate        = new Date(`${ticket.fechaAsignacion}T00:00:00`);

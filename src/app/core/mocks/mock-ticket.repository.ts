@@ -20,10 +20,11 @@ export class MockTicketRepository implements ITicketRepository {
     return this.tickets.find(t => t.numeroTicket === numeroTicket);
   }
 
-  async agregarTicket(ticket: Ticket): Promise<string> {
+  async agregarTicket(ticket: Ticket): Promise<Ticket> {
     const id = Date.now().toString();
-    this.tickets.push({ ...ticket, id });
-    return id;
+    const nuevoTicket = { ...ticket, id };
+    this.tickets.push(nuevoTicket);
+    return nuevoTicket;
   }
 
   async actualizarTicket(id: string, cambios: Partial<Ticket>): Promise<void> {

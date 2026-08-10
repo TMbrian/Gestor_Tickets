@@ -9,7 +9,7 @@ export abstract class ITicketRepository {
   abstract obtenerTickets(idUsuario: string): Promise<Ticket[]>;
   abstract obtenerTicket(id: string): Promise<Ticket | undefined>;
   abstract obtenerTicketPorNumero(idUsuario: string, numeroTicket: string): Promise<Ticket | undefined>;
-  abstract agregarTicket(ticket: Ticket): Promise<string>;
+  abstract agregarTicket(ticket: Ticket): Promise<Ticket>;
   abstract actualizarTicket(id: string, cambios: Partial<Ticket>): Promise<void>;
   abstract eliminarTicket(id: string): Promise<void>;
   abstract contarTicketsPorSitio(idUsuario: string, nombreSitio: string): Promise<number>;

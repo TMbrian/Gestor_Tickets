@@ -36,10 +36,10 @@ export class FirestoreCatalogoRepository implements ICatalogoRepository {
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
-  async agregarSitio(idUsuario: string, nombre: string): Promise<string> {
+  async agregarSitio(idUsuario: string, nombre: string): Promise<Sitio> {
     const nuevoSitio: Sitio = { nombre, idUsuario, creadoEn: Date.now() };
     const ref = await addDoc(this.coleccionSitios(), nuevoSitio);
-    return ref.id;
+    return { ...nuevoSitio, id: ref.id };
   }
 
   async actualizarSitio(id: string, nombre: string): Promise<void> {
@@ -63,10 +63,10 @@ export class FirestoreCatalogoRepository implements ICatalogoRepository {
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
-  async agregarArea(idUsuario: string, nombre: string): Promise<string> {
+  async agregarArea(idUsuario: string, nombre: string): Promise<Area> {
     const nuevaArea: Area = { nombre, idUsuario, creadoEn: Date.now() };
     const ref = await addDoc(this.coleccionAreas(), nuevaArea);
-    return ref.id;
+    return { ...nuevaArea, id: ref.id };
   }
 
   async actualizarArea(id: string, nombre: string): Promise<void> {

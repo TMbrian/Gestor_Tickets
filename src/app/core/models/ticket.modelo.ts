@@ -87,6 +87,13 @@ export interface Ticket {
 
   /** Marca de tiempo (Unix ms) de la última actualización del registro */
   actualizadoEn: number;
+
+  /**
+   * Token de concurrencia optimista (RowVersion) asignado por el backend SQL.
+   * `undefined` en la implementación Firestore (no aplica concurrencia optimista);
+   * poblado por `ApiTicketRepository` en la Fase 4 a partir del `RowVersion` del backend.
+   */
+  rowVersion?: string;
 }
 
 /**

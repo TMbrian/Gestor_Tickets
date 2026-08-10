@@ -6,12 +6,12 @@ import { Sitio, Area, Ticket } from './ticket.modelo';
  */
 export abstract class ICatalogoRepository {
   abstract obtenerSitios(idUsuario: string): Promise<Sitio[]>;
-  abstract agregarSitio(idUsuario: string, nombre: string): Promise<string>;
+  abstract agregarSitio(idUsuario: string, nombre: string): Promise<Sitio>;
   abstract actualizarSitio(id: string, nombre: string): Promise<void>;
   abstract eliminarSitio(id: string): Promise<void>;
 
   abstract obtenerAreas(idUsuario: string): Promise<Area[]>;
-  abstract agregarArea(idUsuario: string, nombre: string): Promise<string>;
+  abstract agregarArea(idUsuario: string, nombre: string): Promise<Area>;
   abstract actualizarArea(id: string, nombre: string): Promise<void>;
   abstract eliminarArea(id: string): Promise<void>;
 

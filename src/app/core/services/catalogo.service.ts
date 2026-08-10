@@ -3,7 +3,6 @@ import { Sitio, Area, Ticket } from '../models/ticket.modelo';
 import { ICatalogoRepository } from '../models/catalogo.repository';
 import { CATALOGO_REPOSITORY_TOKEN } from '../models/repositorios.tokens';
 import { ServicioAutenticacion } from './autenticacion.service';
-import { FirestoreCatalogoRepository } from '../repositories/firestore-catalogo.repository';
 
 /**
  * Servicio de dominio para la gestión de catálogos (Sitios y Áreas).
@@ -17,7 +16,7 @@ import { FirestoreCatalogoRepository } from '../repositories/firestore-catalogo.
 export class ServicioCatalogos {
 
   constructor(
-    @Inject(CATALOGO_REPOSITORY_TOKEN) private readonly repo: FirestoreCatalogoRepository,
+    @Inject(CATALOGO_REPOSITORY_TOKEN) private readonly repo: ICatalogoRepository,
     private readonly servicioAutenticacion: ServicioAutenticacion
   ) {}
 
@@ -33,7 +32,7 @@ export class ServicioCatalogos {
     return this.repo.obtenerSitios(this.idUsuarioActual);
   }
 
-  async agregarSitio(nombre: string): Promise<string> {
+  async agregarSitio(nombre: string): Promise<Sitio> {
     return this.repo.agregarSitio(this.idUsuarioActual, nombre);
   }
 
@@ -53,7 +52,7 @@ export class ServicioCatalogos {
     return this.repo.obtenerAreas(this.idUsuarioActual);
   }
 
-  async agregarArea(nombre: string): Promise<string> {
+  async agregarArea(nombre: string): Promise<Area> {
     return this.repo.agregarArea(this.idUsuarioActual, nombre);
   }
 
