@@ -148,18 +148,10 @@ export class DashboardComponent implements OnInit {
    * @returns Objeto con el número de semana ISO y el año al que pertenece.
    */
   private calcularSemanaIso(fecha: Date): { week: number, year: number } {
-    const semana = UtilidadesFecha.calcularSemanaISO(fecha);
-    // Para el año ISO, usamos el jueves de esa semana como referencia
-    const d = new Date(fecha);
-    const day = d.getDay();
-    if (day === 6) d.setDate(d.getDate() + 2);
-    else if (day === 0) d.setDate(d.getDate() + 1);
-
-    const fechaUtc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const numeroDia = fechaUtc.getUTCDay() || 7;
-    fechaUtc.setUTCDate(fechaUtc.getUTCDate() + 4 - numeroDia);
-
-    return { week: semana, year: fechaUtc.getUTCFullYear() };
+    return {
+      week: UtilidadesFecha.calcularSemanaISO(fecha),
+      year: UtilidadesFecha.calcularAnioISO(fecha)
+    };
   }
 
   /**
@@ -210,14 +202,9 @@ export class DashboardComponent implements OnInit {
         const fechaAsignacion = new Date(ticket.fechaAsignacion);
         if (Number.isNaN(fechaAsignacion.getTime())) return;
 
-        // Calcular semana ISO de la fecha de asignación
+        // Calcular semana y año ISO de la fecha de asignación (ADR-0001, fuente canónica)
         const numeroSemana = UtilidadesFecha.calcularSemanaISO(fechaAsignacion);
-        // Para obtener el año correcto de la semana, usamos una lógica similar al desplazamiento
-        const dRecurso = new Date(fechaAsignacion);
-        const dayR = dRecurso.getDay();
-        if (dayR === 6) dRecurso.setDate(dRecurso.getDate() + 2);
-        else if (dayR === 0) dRecurso.setDate(dRecurso.getDate() + 1);
-        const anioRef = dRecurso.getFullYear();
+        const anioRef = UtilidadesFecha.calcularAnioISO(fechaAsignacion);
 
         const etiqueta = `Sem ${numeroSemana} - ${anioRef}`;
         if (!semanas[etiqueta]) {
