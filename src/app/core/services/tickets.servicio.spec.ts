@@ -52,7 +52,7 @@ describe('ServicioTickets QA Integridad y Reglas de Negocio', () => {
       };
       
       const tiempocalculado = servicio.calcularTiempoSolucion(ticketRoto);
-      expect(tiempocalculado).toBe(0); // Nuestro servicio blinda con Math.max(0, dif)
+      expect(tiempocalculado).toBeNull(); // ADR-0001: fin < inicio es estado roto, no 0
     });
 
     it('Debe descontar los minutos de pausa (tiempoPausaMins) del tiempo total sumado', () => {

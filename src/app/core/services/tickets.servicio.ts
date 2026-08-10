@@ -141,6 +141,8 @@ export class ServicioTickets {
     if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) return null;
 
     const diferenciaTotalMins = Math.round((fin.getTime() - inicio.getTime()) / 60000);
+    // ADR-0001: fecha de cierre anterior a inicio es un estado roto → null, no 0
+    if (diferenciaTotalMins < 0) return null;
     return Math.max(0, diferenciaTotalMins - (ticket.tiempoPausaMins || 0));
   }
 
