@@ -2,7 +2,7 @@ import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import {
-  ServicioTickets, ServicioExportacion, ServicioCatalogos,
+  ServicioTickets, ServicioCatalogos,
   ServicioAutenticacion, ServicioDialogo
 } from '../../core/services';
 import { Ticket, Sitio, Area } from '../../core/models';
@@ -66,7 +66,6 @@ export class ListaTicketsComponent implements OnInit {
    * Constructor del componente.
    *
    * @param servicioTickets       - Servicio para CRUD y consulta de tickets.
-   * @param servicioExportacion   - Servicio de exportación a Excel (no usado directamente aquí; mantenido por compatibilidad).
    * @param servicioCatalogos     - Servicio que provee los catálogos de sitios y áreas.
    * @param servicioDialogo       - Servicio para mostrar alertas, confirmaciones y el cargador global.
    * @param fb                    - Constructor de formularios reactivos de Angular.
@@ -74,7 +73,6 @@ export class ListaTicketsComponent implements OnInit {
    */
   constructor(
     private readonly servicioTickets: ServicioTickets,
-    private readonly servicioExportacion: ServicioExportacion,
     private readonly servicioCatalogos: ServicioCatalogos,
     private readonly servicioDialogo: ServicioDialogo,
     private readonly fb: FormBuilder,
