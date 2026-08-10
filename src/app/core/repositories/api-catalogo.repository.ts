@@ -25,7 +25,7 @@ function aCatalogo<T extends { id?: string }>(dto: CatalogoApiDto): T {
  * `agregarSitio`/`actualizarSitio`/`eliminarSitio` (y su equivalente de áreas)
  * exigen rol Admin en el backend (`RequireAuthorization("SoloAdmin")`). Con
  * el `Rol` actual del front (login solo emite `'Admin'` hoy) no cambia nada,
- * pero cuando se habilite login como `'Agente'` estas llamadas devolverán
+ * pero cuando se habilite login como `'PersonalTI'` estas llamadas devolverán
  * 403 para esos usuarios — a tener en cuenta en ese momento.
  */
 @Injectable()
