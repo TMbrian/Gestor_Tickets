@@ -1,5 +1,11 @@
-/** Roles disponibles dentro del sistema para controlar el nivel de acceso */
-export type Rol = 'Admin';
+/** Roles disponibles dentro del sistema para controlar el nivel de acceso.
+ *  Ensanchado en Fase 4: el backend ya emite el claim `Role` con "Admin" o
+ *  "Agente" (ver ADR 0005 de ticket-manager-api). El front todavía no tiene
+ *  UI para 'Agente' (queda pendiente el rename a 'Personal', ya anotado en
+ *  el CLAUDE.md del proyecto) pero el tipo debe aceptar el valor real que
+ *  llega en `UsuarioDto.Rol` para no forzar un cast inseguro en el servicio
+ *  de autenticación. */
+export type Rol = 'Admin' | 'Agente';
 
 /**
  * Representa un usuario registrado en el sistema.
@@ -12,12 +18,6 @@ export interface Usuario {
 
   /** Nombre de usuario utilizado para iniciar sesión */
   nombreUsuario: string;
-
-  /**
-   * Contraseña del usuario.
-   * Opcional en lectura; nunca debe exponerse en respuestas del servidor.
-   */
-  contrasena?: string;
 
   /** Nombre completo o de visualización del usuario */
   nombre: string;

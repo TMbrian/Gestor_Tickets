@@ -199,7 +199,11 @@ export class DashboardComponent implements OnInit {
       const semanas: any = {};
 
       ticketsCerrados.forEach(ticket => {
-        const fechaAsignacion = new Date(ticket.fechaAsignacion);
+        // parsearFechaLocal (no new Date() directo): mismo motivo que en
+        // ServicioTickets.obtenerEstadisticas — evita que new Date('YYYY-MM-DD')
+        // (interpretado como UTC) oculte un sábado/domingo real y rompa el
+        // desplazamiento de fin de semana de ADR-0001.
+        const fechaAsignacion = UtilidadesFecha.parsearFechaLocal(ticket.fechaAsignacion);
         if (Number.isNaN(fechaAsignacion.getTime())) return;
 
         // Calcular semana y año ISO de la fecha de asignación (ADR-0001, fuente canónica)

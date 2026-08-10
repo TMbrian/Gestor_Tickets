@@ -1,168 +1,299 @@
 import { Injectable } from '@angular/core';
-import {
-  Auth, authState, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, signOut, updateProfile,
-  sendPasswordResetEmail
-} from '@angular/fire/auth';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { catchError, finalize, map, shareReplay, tap } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
 import { Usuario, Rol } from '../models/usuario.modelo';
+import { environment } from '../../../environments/environment';
+
+/** Margen de refresco proactivo (ADR 0005, pendiente de implementación #5):
+ *  se refresca 2 minutos antes de que venza el access token, para que el
+ *  caso de uso central (cronómetro corriendo una jornada completa) casi
+ *  nunca dependa del camino reactivo (401 + reintento) del interceptor. */
+const MARGEN_REFRESCO_PROACTIVO_MS = 2 * 60 * 1000;
+
+interface UsuarioApiDto {
+  id: string;
+  nombreUsuario: string;
+  nombre: string;
+  rol: string;
+  activo: boolean;
+  creadoEn: number;
+}
+
+interface RespuestaLogin {
+  token: string;
+  expiraEn: string; // DateTimeOffset serializado como ISO 8601 por System.Text.Json
+  usuario: UsuarioApiDto;
+}
 
 /**
- * Servicio central de autenticación de la aplicación.
+ * Servicio central de autenticación de la aplicación (Fase 4 — reemplaza
+ * Firebase Auth por la API propia, ADR 0005 de `ticket-manager-api`).
  *
- * Gestiona el estado de sesión del usuario mediante Firebase Auth,
- * exponiendo observables reactivos para que el resto de la aplicación
- * pueda reaccionar a cambios de sesión sin acoplarse directamente a Firebase.
+ * Superficie pública preservada EXACTAMENTE igual que la versión Firebase
+ * para no tocar componentes ni el guard: `usuarioActual$`, `esAdmin$`,
+ * `estaInicializado$`, `usuarioActual`, `esAdmin`, `iniciarSesion`,
+ * `registrar`, `cerrarSesion`, `actualizarUsuario`, `recuperarContrasena`.
+ *
+ * Nuevo (aditivo, no rompe superficie previa): `tokenActual`, `refrescarSesion$`,
+ * `forzarCierreSesion`, `intentarRefrescoInicial` — usados por el
+ * interceptor HTTP y por el bootstrap de la app.
+ *
+ * El access token vive SOLO en memoria (nunca `localStorage`/`sessionStorage`,
+ * por diseño del ADR 0005 — mitiga exfiltración por XSS).
  */
 @Injectable({
   providedIn: 'root'
 })
 export class ServicioAutenticacion {
 
-  /** Fuente interna del estado del usuario autenticado */
   private usuarioActualSubject = new BehaviorSubject<Usuario | null>(null);
-
-  /** Observable público del usuario actualmente autenticado */
   public usuarioActual$: Observable<Usuario | null> = this.usuarioActualSubject.asObservable();
 
-  /** Indica de forma reactiva si el usuario autenticado tiene rol de administrador */
   public esAdmin$ = new BehaviorSubject<boolean>(false);
-
-  /**
-   * Indica si el servicio de autenticación ya completó su inicialización.
-   * El guard de rutas depende de este observable antes de evaluar el acceso.
-   */
   public estaInicializado$ = new BehaviorSubject<boolean>(false);
 
-  /**
-   * @param auth     - Instancia de Firebase Auth inyectada por AngularFire.
-   * @param enrutador - Servicio de enrutamiento para redirigir tras cerrar sesión.
-   */
-  constructor(private auth: Auth, private enrutador: Router) {
-    // Suscripción al estado de autenticación de Firebase.
-    // Cada cambio (login, logout, recarga) actualiza el estado local del servicio.
-    authState(this.auth).subscribe(usuarioFirebase => {
-      if (usuarioFirebase) {
-        // Mapeo del usuario de Firebase al modelo interno de la aplicación
-        const usuarioMapeado: Usuario = {
-          id: usuarioFirebase.uid,
-          nombreUsuario: usuarioFirebase.email || '',
-          nombre: usuarioFirebase.displayName
-            || usuarioFirebase.email?.split('@')[0]
-            || '',
-          // Por ahora todos los usuarios autenticados se tratan como Admin
-          rol: 'Admin' as Rol
-        };
+  /** Access token JWT, solo en memoria. */
+  private tokenEnMemoria: string | null = null;
 
-        this.usuarioActualSubject.next(usuarioMapeado);
-        this.esAdmin$.next(true);
-      } else {
-        // Sin sesión activa: se limpian los estados
-        this.usuarioActualSubject.next(null);
-        this.esAdmin$.next(false);
-      }
+  /** Refresco proactivo programado tras cada login/refresh exitoso. */
+  private idTimeoutRefrescoProactivo: ReturnType<typeof setTimeout> | null = null;
 
-      // Marca el servicio como inicializado tras la primera emisión de Firebase
-      this.estaInicializado$.next(true);
-    });
-  }
+  /** Single-flight: mientras haya un refresh en curso, todo el mundo
+   *  (interceptor ante un 401, el propio timer proactivo, o varios 401
+   *  en paralelo) comparte esta misma llamada en vez de disparar una por
+   *  cada disparador. Vive acá y no en el interceptor a propósito: cubre
+   *  también la carrera entre el refresco proactivo por temporizador y el
+   *  reactivo por 401, que un single-flight solo-en-el-interceptor no
+   *  vería (son dos disparadores independientes). */
+  private refrescoEnCurso$: Observable<void> | null = null;
 
-  /**
-   * Devuelve de forma síncrona el usuario actualmente autenticado.
-   * Útil en guards y lógica que no puede suscribirse a un observable.
-   */
+  constructor(
+    private readonly http: HttpClient,
+    private readonly enrutador: Router
+  ) {}
+
   get usuarioActual(): Usuario | null {
     return this.usuarioActualSubject.value;
   }
 
-  /**
-   * Devuelve de forma síncrona si el usuario actual tiene rol de administrador.
-   */
   get esAdmin(): boolean {
     return this.esAdmin$.value;
   }
 
+  /** Usado por el interceptor para adjuntar `Authorization: Bearer`. */
+  get tokenActual(): string | null {
+    return this.tokenEnMemoria;
+  }
+
   /**
-   * Inicia sesión con nombre de usuario o correo electrónico y contraseña.
-   * Si el valor no contiene `@`, se le agrega el dominio corporativo automáticamente.
-   *
-   * @param nombreUsuario - Nombre de usuario o correo completo.
-   * @param contrasena    - Contraseña del usuario.
+   * Silent refresh de arranque. Se invoca desde `APP_INITIALIZER` en
+   * `main.ts`, ANTES de que el guard evalúe cualquier ruta. Nunca rechaza:
+   * sin sesión previa (o expirada) simplemente arranca sin usuario, y
+   * `estaInicializado$` se marca en `true` en cualquier caso — el guard ya
+   * espera ese observable, no hace falta tocar `autenticacion.guard.ts`.
    */
+  async intentarRefrescoInicial(): Promise<void> {
+    try {
+      await firstValueFrom(this.refrescarSesion$());
+    } catch {
+      // Silencioso por diseño (ADR 0005): sin sesión válida (401) o ante un
+      // problema de red al arrancar, se arranca sin usuario autenticado y
+      // el guard redirige a /login. No hay sesión previa en memoria que
+      // proteger en este punto (recién arrancó la app), así que no aplica
+      // la distinción de estados del Bloqueante 1 acá.
+    } finally {
+      this.estaInicializado$.next(true);
+    }
+  }
+
   async iniciarSesion(nombreUsuario: string, contrasena: string): Promise<void> {
-    const correo = nombreUsuario.includes('@')
-      ? nombreUsuario
-      : `${nombreUsuario}@comasw.com`;
-
-    await signInWithEmailAndPassword(this.auth, correo, contrasena);
+    const respuesta = await firstValueFrom(
+      this.http.post<RespuestaLogin>(
+        `${environment.apiBaseUrl}/auth/login`,
+        { nombreUsuario, contrasena },
+        { withCredentials: true }
+      )
+    );
+    this.aplicarSesion(respuesta);
   }
 
   /**
-   * Registra un nuevo usuario en Firebase Auth y asigna su nombre de perfil.
-   * Si el nombre de usuario no contiene `@`, se le agrega el dominio corporativo.
+   * Refresca la sesión contra `/auth/refresh`. Single-flight: si ya hay un
+   * refresco en curso, devuelve el mismo Observable compartido en vez de
+   * disparar una llamada nueva.
    *
-   * @param nombreUsuario - Nombre de usuario o correo completo.
-   * @param contrasena    - Contraseña para la nueva cuenta.
-   * @param rol           - Rol que se asignará al nuevo usuario.
+   * Manejo de errores (fix de @security-auditor, Bloqueante 1): SOLO un
+   * `401` real (sesión expirada/revocada/reuso detectado — el único código
+   * que devuelve `/auth/refresh` según el ADR 0005) limpia la sesión local.
+   * Cualquier otro error (timeout, `status 0` sin conexión, `502/503` de un
+   * proxy transitorio) se propaga tal cual SIN tocar `usuarioActualSubject`
+   * ni el token en memoria: la sesión sigue viva, y el próximo disparador
+   * (el timer proactivo reprogramado, o el siguiente 401 real que capture
+   * el interceptor) puede reintentar más tarde. Tratar un blip de red como
+   * logout iría en contra del objetivo central del ADR (jornada larga con
+   * cronómetro corriendo no debe perderse por un problema transitorio).
    */
-  async registrar(nombreUsuario: string, contrasena: string, rol: Rol): Promise<void> {
-    const correo = nombreUsuario.includes('@')
-      ? nombreUsuario
-      : `${nombreUsuario}@comasw.com`;
-
-    const credencial = await createUserWithEmailAndPassword(this.auth, correo, contrasena);
-    await updateProfile(credencial.user, { displayName: nombreUsuario });
+  refrescarSesion$(): Observable<void> {
+    if (!this.refrescoEnCurso$) {
+      this.refrescoEnCurso$ = this.http.post<RespuestaLogin>(
+        `${environment.apiBaseUrl}/auth/refresh`, null, { withCredentials: true }
+      ).pipe(
+        tap(respuesta => this.aplicarSesion(respuesta)),
+        map(() => void 0),
+        catchError((error: HttpErrorResponse) => {
+          if (error.status === 401) {
+            this.limpiarSesion();
+          }
+          return throwError(() => error);
+        }),
+        finalize(() => { this.refrescoEnCurso$ = null; }),
+        shareReplay(1)
+      );
+    }
+    return this.refrescoEnCurso$;
   }
 
-  /**
-   * Cierra la sesión del usuario actual y redirige a la página de login.
-   */
+  /** Cierre de sesión iniciado por el usuario: avisa al backend (revoca la
+   *  familia de refresh tokens) y limpia el estado local. Best-effort: si la
+   *  llamada de red falla, igual se limpia localmente (el backend además
+   *  responde 204 siempre, por diseño, así que un fallo acá es solo de red).
+   *  A diferencia de `refrescarSesion$()`, acá SIEMPRE se limpia el estado
+   *  sin importar el código: es una acción explícita del usuario, no una
+   *  inferencia a partir de un error transitorio. */
   async cerrarSesion(): Promise<void> {
-    await signOut(this.auth);
+    try {
+      await firstValueFrom(
+        this.http.post<void>(`${environment.apiBaseUrl}/auth/logout`, null, { withCredentials: true })
+      );
+    } catch {
+      // best-effort — ver comentario arriba.
+    }
+    this.limpiarSesion();
+    this.enrutador.navigate(['/login']);
+  }
+
+  /** Cierre de sesión forzado por el interceptor cuando el refresh (o el
+   *  reintento posterior a un refresh exitoso) devuelve un 401 real. NO
+   *  llama a `/auth/logout`: si ya hubo un 401, el token es inválido
+   *  server-side (expirado, revocado o reuso detectado) y una llamada extra
+   *  no aporta nada. Importante: quien llama a este método (el interceptor)
+   *  ya verificó que el error es un 401 real antes de invocarlo — ver
+   *  `InterceptorAutenticacion.manejarNoAutorizado()`. */
+  forzarCierreSesion(): void {
+    this.limpiarSesion();
     this.enrutador.navigate(['/login']);
   }
 
   /**
-   * Actualiza el perfil del usuario autenticado en Firebase y sincroniza
-   * el estado local del servicio para reflejar los cambios de inmediato.
+   * Actualiza el nombre para mostrar contra `PATCH /api/v1/usuarios/{id}`.
+   * Requiere rol Admin en el backend (`RequireAuthorization("SoloAdmin")`
+   * sobre todo el grupo `/usuarios`).
    *
-   * @param id            - Identificador del usuario (reservado para uso futuro).
-   * @param nombreUsuario - Nuevo nombre de usuario o correo.
-   * @param contrasena    - Nueva contraseña (opcional; no implementado aún).
+   * Fix de @security-auditor (Bloqueante 3): si se pasa `contrasena` con
+   * un valor no vacío, se lanza un error explícito en vez de ignorarlo en
+   * silencio. La versión anterior de este método (y también la vieja
+   * implementación con Firebase) descartaba `contrasena` sin avisar — si el
+   * usuario cambia de contraseña porque sospecha un compromiso de
+   * credenciales, un fallo silencioso es el peor resultado posible: cree
+   * que rotó la contraseña y no pasó nada. El backend tampoco lo
+   * soportaría de todas formas: `ActualizarUsuarioRequest` no tiene campo
+   * `Contrasena` ni `NombreUsuario`, solo `Nombre`, `Rol` y `Activo`.
    */
   async actualizarUsuario(id: string, nombreUsuario: string, contrasena?: string): Promise<void> {
-    const usuarioFirebase = this.auth.currentUser;
-
-    if (usuarioFirebase) {
-      if (nombreUsuario) {
-        await updateProfile(usuarioFirebase, { displayName: nombreUsuario });
-      }
-
-      // Re-dispara la actualización del estado local sin esperar a Firebase
-      this.usuarioActualSubject.next({
-        ...this.usuarioActualSubject.value!,
-        nombre: nombreUsuario,
-        nombreUsuario: nombreUsuario.includes('@')
-          ? nombreUsuario
-          : `${nombreUsuario}@comasw.com`
-      });
+    if (contrasena) {
+      throw new Error(
+        'El cambio de contraseña no está disponible: la API todavía no expone un endpoint para ' +
+        'rotarla (el backend solo permite actualizar nombre, rol y estado activo). Si el motivo es ' +
+        'un compromiso de credenciales, contactá a un Administrador para que gestione la cuenta ' +
+        'directamente en la base. Pendiente de decisión de producto — ver diseño Fase 4.'
+      );
     }
+
+    const dto = await firstValueFrom(
+      this.http.patch<UsuarioApiDto>(`${environment.apiBaseUrl}/usuarios/${id}`, { nombre: nombreUsuario })
+    );
+    this.usuarioActualSubject.next(this.mapearUsuario(dto));
   }
 
   /**
-   * Envía un correo de recuperación de contraseña al usuario.
-   * Si el nombre de usuario no contiene `@`, se le agrega el dominio corporativo.
-   *
-   * @param nombreUsuario - Nombre de usuario o correo al que enviar el enlace.
-   * @returns Mensaje de confirmación con el correo destino.
+   * NO IMPLEMENTADO CONTRA LA API — decisión de producto pendiente.
+   * La API no tiene autoregistro: `POST /api/v1/usuarios` exige
+   * `RequireAuthorization("SoloAdmin")`, o sea ya hace falta estar logueado
+   * como Admin para crear un usuario. El flujo actual del login (registrarse
+   * sin sesión previa) no tiene equivalente server-side.
    */
-  async recuperarContrasena(nombreUsuario: string): Promise<string> {
-    const correo = nombreUsuario.includes('@')
-      ? nombreUsuario
-      : `${nombreUsuario}@comasw.com`;
+  async registrar(_nombreUsuario: string, _contrasena: string, _rol: Rol): Promise<void> {
+    throw new Error(
+      'El autoregistro ya no está disponible: crear usuarios requiere una sesión de Administrador. ' +
+      'Pendiente de decisión de producto (ver diseño Fase 4, @security-auditor / @product-analyst).'
+    );
+  }
 
-    await sendPasswordResetEmail(this.auth, correo);
-    return `Se ha enviado un correo de recuperación a: ${correo}. Revisa tu bandeja de entrada.`;
+  /**
+   * NO IMPLEMENTADO CONTRA LA API — no existe endpoint de recuperación de
+   * contraseña por correo en el backend (no hay infraestructura de email).
+   */
+  async recuperarContrasena(_nombreUsuario: string): Promise<string> {
+    throw new Error(
+      'La recuperación de contraseña por correo no está implementada en la API. ' +
+      'Pendiente de decisión de producto (ver diseño Fase 4).'
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+
+  private aplicarSesion(respuesta: RespuestaLogin): void {
+    this.tokenEnMemoria = respuesta.token;
+    this.usuarioActualSubject.next(this.mapearUsuario(respuesta.usuario));
+    this.esAdmin$.next(respuesta.usuario.rol === 'Admin');
+    this.programarRefrescoProactivo(new Date(respuesta.expiraEn));
+  }
+
+  /**
+   * Fix de @security-auditor (Bloqueante 2): allow-list explícito, NUNCA un
+   * spread amplio del DTO. `usuarioActualSubject` es inspeccionable desde
+   * Angular DevTools (Redux DevTools / component explorer también, si se
+   * usan) — un campo que el backend agregue a `UsuarioDto` sin pensar en el
+   * cliente (o un cambio futuro del DTO) no debe poder colarse a memoria
+   * del front solo por venir en la respuesta HTTP. Si `UsuarioDto` gana un
+   * campo nuevo mañana, este mapeo lo ignora por defecto hasta que alguien
+   * decida explícitamente exponerlo acá.
+   */
+  private mapearUsuario(dto: UsuarioApiDto): Usuario {
+    return {
+      id: dto.id,
+      nombreUsuario: dto.nombreUsuario,
+      nombre: dto.nombre,
+      rol: dto.rol as Rol
+    };
+  }
+
+  private limpiarSesion(): void {
+    this.tokenEnMemoria = null;
+    this.usuarioActualSubject.next(null);
+    this.esAdmin$.next(false);
+    this.cancelarRefrescoProactivo();
+  }
+
+  private programarRefrescoProactivo(expiraEn: Date): void {
+    this.cancelarRefrescoProactivo();
+    const demoraMs = expiraEn.getTime() - Date.now() - MARGEN_REFRESCO_PROACTIVO_MS;
+    this.idTimeoutRefrescoProactivo = setTimeout(
+      () => this.refrescarSesion$().subscribe({
+        error: () => { /* transitorio: la sesión sigue viva (ver refrescarSesion$); un 401 real
+                          ya se limpió a sí mismo. El interceptor reintentará ante el próximo request. */ }
+      }),
+      Math.max(demoraMs, 0)
+    );
+  }
+
+  private cancelarRefrescoProactivo(): void {
+    if (this.idTimeoutRefrescoProactivo !== null) {
+      clearTimeout(this.idTimeoutRefrescoProactivo);
+      this.idTimeoutRefrescoProactivo = null;
+    }
   }
 }

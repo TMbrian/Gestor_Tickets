@@ -35,8 +35,9 @@ export const guardAutenticacion: CanActivateFn = (rutaActiva, estadoRuta) => {
         return true;
       }
 
-      // No hay sesión activa, se redirige al inicio de sesión
-      enrutador.navigate(['/login']);
+      // No hay sesión activa: se redirige al login, pasando la URL originalmente
+      // pedida como returnUrl para poder volver ahí tras autenticarse.
+      enrutador.navigate(['/login'], { queryParams: { returnUrl: estadoRuta.url } });
       return false;
     })
   );

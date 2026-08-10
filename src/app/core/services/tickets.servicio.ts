@@ -154,7 +154,12 @@ export class ServicioTickets {
     if (semana !== undefined && anio !== undefined) {
       filtrados = todos.filter(ticket => {
         if (!ticket.fechaAsignacion) return false;
-        const fecha = new Date(ticket.fechaAsignacion);
+        // parsearFechaLocal (no new Date() directo): un ticket asignado en
+        // sábado/domingo necesita el desplazamiento de fin de semana
+        // (ADR-0001) para caer en la semana correcta — new Date('YYYY-MM-DD')
+        // se interpreta como UTC y puede correr el día hacia atrás en
+        // timezones detrás de UTC, ocultando el sábado/domingo real.
+        const fecha = UtilidadesFecha.parsearFechaLocal(ticket.fechaAsignacion);
         if (Number.isNaN(fecha.getTime())) return false;
         return UtilidadesFecha.calcularSemanaISO(fecha) === semana
             && UtilidadesFecha.calcularAnioISO(fecha)   === anio;
@@ -189,15 +194,19 @@ export class ServicioTickets {
   // Exportación e Importación
   // ---------------------------------------------------------------------------
 
-  async exportarAExcel(filtroSemana?: number): Promise<void> {
+  async exportarAExcel(filtroSemana?: number, filtroAnio?: number): Promise<void> {
     let tickets = await this.obtenerTickets();
-    if (filtroSemana !== undefined) {
-      tickets = tickets.filter(t => t.semana === filtroSemana);
+    if (filtroSemana !== undefined && filtroAnio !== undefined) {
+      // Debe filtrar por semana Y año: dos tickets de años distintos pueden
+      // compartir el mismo número de semana ISO (ej. semana 32 de 2025 y de
+      // 2026), y filtrar solo por semana los mezclaría en el mismo export.
+      tickets = tickets.filter(t => t.semana === filtroSemana && t.anioISO === filtroAnio);
     }
 
     const filas = tickets.map(t => ({
       'Número de Ticket': t.numeroTicket,
       'Semana': t.semana,
+      'Año ISO': t.anioISO || '',
       'Fecha Asignación': t.fechaAsignacion,
       'Hora Asignación': t.horaAsignacion,
       'Sitio/CEDI': t.sitio,
@@ -207,22 +216,31 @@ export class ServicioTickets {
       'Asignado Oficialmente': t.estaAsignado ? 'SI' : 'NO',
       'Emergente RFC': t.esRfc ? 'SI' : 'NO',
       'Número RFC': t.numeroRfc || '',
+      'Fecha Inicio Solución': t.fechaInicioSolucion || '',
+      'Hora Inicio Solución': t.horaInicioSolucion || '',
+      'Semana Inicio Solución': t.semanaInicioSolucion || '',
       'Fecha Cierre': t.fechaCierre || '',
       'Hora Cierre': t.horaCierre || '',
+      'Semana Cierre': t.semanaCierre || '',
       'Solución Hrs': t.tiempoSolucionMins ? (t.tiempoSolucionMins / 60).toFixed(1) : '0'
     }));
 
     const hojaDatos: XLSX.WorkSheet = XLSX.utils.json_to_sheet(filas);
+    // 18 anchos, uno por columna, en el mismo orden que el objeto `filas` de arriba.
     hojaDatos['!cols'] = [
-      { wch: 18 }, { wch: 10 }, { wch: 16 }, { wch: 16 },
+      { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 16 },
       { wch: 20 }, { wch: 22 }, { wch: 40 }, { wch: 14 },
       { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
-      { wch: 16 }, { wch: 14 }
+      { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
+      { wch: 14 }, { wch: 14 }
     ];
 
     const libroDeTrabajo = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(libroDeTrabajo, hojaDatos, 'Histórico');
-    XLSX.writeFile(libroDeTrabajo, `Tickets_${filtroSemana ? `Semana_${filtroSemana}` : 'Historial_Completo'}.xlsx`);
+    const sufijoArchivo = filtroSemana !== undefined && filtroAnio !== undefined
+      ? `Semana_${filtroSemana}_${filtroAnio}`
+      : 'Historial_Completo';
+    XLSX.writeFile(libroDeTrabajo, `Tickets_${sufijoArchivo}.xlsx`);
   }
 
   async descargarPlantilla(): Promise<void> {

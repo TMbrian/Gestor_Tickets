@@ -45,12 +45,15 @@ export class ExcelParser {
     const asignacionStr = obtenerValor(['fecha asignación', 'fecha asignacion', 'fecha', 'assignmentdate']) || new Date().toISOString().split('T')[0];
     const asignacionDate = new Date(`${asignacionStr}T00:00:00`);
 
+    const inicioSolucionStr = obtenerValor(['fecha inicio solución', 'fecha inicio solucion', 'startsolutiondate']) || null;
+    const cierreStr = obtenerValor(['fecha cierre', 'closedate']) || null;
+
     return {
       numeroTicket: String(numeroTicket).trim(),
       idUsuario: idUsuarioActual,
       fechaAsignacion: asignacionStr,
       semana: Number(obtenerValor(['semana', 'week'])) || UtilidadesFecha.calcularSemanaISO(asignacionDate),
-      anioISO: UtilidadesFecha.calcularAnioISO(asignacionDate),
+      anioISO: Number(obtenerValor(['año iso', 'ano iso', 'isoyear'])) || UtilidadesFecha.calcularAnioISO(asignacionDate),
       horaAsignacion: obtenerValor(['hora asignación', 'hora asignacion', 'hora', 'assignmenttime']) || '08:00',
       sitio: obtenerValor(['sitio/cedi', 'sitio', 'cedi', 'site']) || 'N/A',
       areaAfectada: obtenerValor(['área afectada', 'area afectada', 'área', 'area', 'affectedarea']) || 'N/A',
@@ -59,8 +62,18 @@ export class ExcelParser {
       estaAsignado: String(obtenerValor(['asignado oficialmente', 'asignado', 'isassigned'])).toUpperCase().includes('SI') || obtenerValor(['isassigned']) === true,
       esRfc: String(obtenerValor(['emergente rfc', 'rfc', 'isrfc'])).toUpperCase().includes('SI') || obtenerValor(['isrfc']) === true,
       numeroRfc: obtenerValor(['número rfc', 'numero rfc', 'rfcnumber']) || null,
-      fechaCierre: obtenerValor(['fecha cierre', 'closedate']) || null,
+      fechaInicioSolucion: inicioSolucionStr,
+      horaInicioSolucion: obtenerValor(['hora inicio solución', 'hora inicio solucion', 'starttime']) || null,
+      semanaInicioSolucion: inicioSolucionStr
+        ? (Number(obtenerValor(['semana inicio solución', 'semana inicio solucion']))
+          || UtilidadesFecha.calcularSemanaISO(new Date(`${inicioSolucionStr}T00:00:00`)))
+        : null,
+      fechaCierre: cierreStr,
       horaCierre: obtenerValor(['hora cierre', 'closetime']) || null,
+      semanaCierre: cierreStr
+        ? (Number(obtenerValor(['semana cierre']))
+          || UtilidadesFecha.calcularSemanaISO(new Date(`${cierreStr}T00:00:00`)))
+        : null,
       tiempoSolucionMins: null, // Será recalculado en el Servicio/Repositorio
       creadoEn: Date.now(),
       actualizadoEn: Date.now()

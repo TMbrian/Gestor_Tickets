@@ -57,6 +57,31 @@ export class UtilidadesFecha {
   }
 
   /**
+   * Parsea una fecha en formato `YYYY-MM-DD` como fecha LOCAL, nunca UTC.
+   *
+   * `new Date('YYYY-MM-DD')` (sin componente de hora) se interpreta como UTC
+   * medianoche según el spec de JS — en timezones detrás de UTC (ej. México,
+   * UTC-6) eso corre el día calendario un día hacia atrás al pedir
+   * `.getDay()`/`.getDate()` en hora local (un sábado pasa a leerse como
+   * viernes). Esto rompe silenciosamente el desplazamiento de fin de semana
+   * de `calcularSemanaISO`/`calcularAnioISO` (ADR-0001): un ticket asignado
+   * en sábado dejaba de correrse a la semana siguiente porque la función
+   * nunca detectaba que el día fuera sábado.
+   *
+   * Usar SIEMPRE esta función (o el mismo patrón de desestructuración) en
+   * vez de `new Date(fechaStr)` para cualquier fecha-string sin hora antes
+   * de pasarla a `calcularSemanaISO`/`calcularAnioISO`.
+   *
+   * @param fechaStr - Fecha en formato `YYYY-MM-DD`.
+   * @returns `Date` construida en hora local, o `Invalid Date` si el string
+   *          no tiene el formato esperado (igual que `new Date()` nativo).
+   */
+  static parsearFechaLocal(fechaStr: string): Date {
+    const [anio, mes, dia] = fechaStr.split('-').map(Number);
+    return new Date(anio, mes - 1, dia);
+  }
+
+  /**
    * Retorna la fecha actual del sistema en formato `YYYY-MM-DD`.
    * Formato requerido por los campos `fechaAsignacion` y `fechaCierre` del modelo `Ticket`.
    *

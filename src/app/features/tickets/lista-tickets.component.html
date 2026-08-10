@@ -4,7 +4,7 @@
       <i class="bi bi-clouds-fill text-primary me-2"></i>
       Histórico de Tickets
     </h2>
-    <p class="text-muted mb-0 fw-medium">Gestión avanzada con sincronización en tiempo real (Cloud Firebase)</p>
+    <p class="text-muted mb-0 fw-medium">Gestión avanzada de tickets de soporte técnico</p>
   </div>
 
   <div class="col-12">
@@ -34,7 +34,7 @@
         <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2">
           <li>
             <button class="dropdown-item py-2 px-4" (click)="exportarSemanaActual()">
-              <i class="bi bi-calendar-week me-2 text-primary"></i> Semana Actual (W{{ semanaSeleccionada }})
+              <i class="bi bi-calendar-week me-2 text-primary"></i> Semana Actual (W{{ semanaSeleccionada }} - {{ anioSeleccionado }})
             </button>
           </li>
           <li>
@@ -82,15 +82,15 @@
           </button>
           <div class="flex-grow-1 text-center px-2">
             <span class="fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Semana {{
-              semanaSeleccionada }}</span>
-            <span *ngIf="semanaSeleccionada === semanaActual" class="badge bg-primary ms-2"
+              semanaSeleccionada }} - {{ anioSeleccionado }}</span>
+            <span *ngIf="semanaSeleccionada === semanaActual && anioSeleccionado === anioActual" class="badge bg-primary ms-2"
               style="font-size: 0.6rem;">ACTUAL</span>
           </div>
           <button class="btn btn-sm btn-light border-0 rounded-2" (click)="semanaSiguiente()" title="Semana Siguiente"
             aria-label="Ir a semana siguiente">
             <i class="bi bi-chevron-right"></i>
           </button>
-          <button *ngIf="semanaSeleccionada !== semanaActual"
+          <button *ngIf="semanaSeleccionada !== semanaActual || anioSeleccionado !== anioActual"
             class="btn btn-sm btn-link text-decoration-none fw-bold p-1 ms-1" (click)="irASemanaActual()"
             style="font-size: 0.75rem;">
             Hoy
@@ -262,6 +262,13 @@
       </div>
 
       <div class="modal-body p-4 bg-body-tertiary">
+        <!-- Mensaje inline: un <dialog> nativo abierto (top layer del navegador)
+             tapa cualquier modal de Bootstrap externo (ServicioDialogo.alerta()),
+             sin importar su z-index — por eso el error se muestra acá dentro. -->
+        <div *ngIf="mensajeErrorModal" class="alert alert-danger d-flex align-items-center mb-3 shadow-sm p-3 border-0 rounded-3" role="alert">
+          <i class="bi bi-exclamation-triangle-fill fs-4 me-3" aria-hidden="true"></i>
+          <div>{{ mensajeErrorModal }}</div>
+        </div>
         <form [formGroup]="formularioTicket" (ngSubmit)="guardarTicket()">
           <div class="accordion" id="ticketAccordion">
 

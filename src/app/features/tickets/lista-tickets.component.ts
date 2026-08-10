@@ -53,11 +53,22 @@ export class ListaTicketsComponent implements OnInit {
   /** ID del ticket que se está editando actualmente (sólo en modo edición) */
   idEdicionActual?: string;
 
+  /** Mensaje de error a mostrar DENTRO del modal de ticket (evita el problema
+   *  de apilamiento: un <dialog> nativo abierto (top layer) tapa cualquier
+   *  modal de Bootstrap externo, incluida ServicioDialogo.alerta()). */
+  mensajeErrorModal = '';
+
   /** Número de la semana ISO seleccionada en el filtro */
   semanaSeleccionada: number = 1;
 
+  /** Año ISO correspondiente a la semana seleccionada en el filtro */
+  anioSeleccionado: number = new Date().getFullYear();
+
   /** Número de la semana ISO real (la del día de hoy) */
   semanaActual: number = 1;
+
+  /** Año ISO real (el del día de hoy) */
+  anioActual: number = new Date().getFullYear();
 
   /** Referencia al elemento HTML del modal nativo */
   @ViewChild('ticketModal') referenciaModalTicket!: ElementRef<HTMLDialogElement>;
@@ -96,17 +107,27 @@ export class ListaTicketsComponent implements OnInit {
    * Inicialización asíncrona de los datos.
    */
   private async inicializarDatos() {
-    this.semanaActual = UtilidadesFecha.calcularSemanaISO(new Date());
+    const hoy = new Date();
+    this.semanaActual = UtilidadesFecha.calcularSemanaISO(hoy);
+    this.anioActual = UtilidadesFecha.calcularAnioISO(hoy);
     this.semanaSeleccionada = this.semanaActual;
+    this.anioSeleccionado = this.anioActual;
     await this.cargarTickets();
     await this.cargarCatalogos();
 
-    // Si no hay tickets en la semana actual pero hay tickets en general,
-    // saltar automáticamente a la semana más reciente con datos.
+    // Si no hay tickets en la semana+año actual pero hay tickets en general,
+    // saltar automáticamente a la semana del ticket más reciente (por
+    // fechaAsignacion). Antes tomaba el `semana` máximo de TODOS los tickets
+    // sin mirar el año — con datos de varios años migrados desde Firebase,
+    // eso podía mezclar "semana 50 de 2023" con "semana 5 de 2026" y saltar
+    // a una combinación semana/año que no corresponde a ningún dato real.
     if (this.ticketsFiltrados.length === 0 && this.tickets.length > 0) {
-      const semanaMaxima = Math.max(...this.tickets.map(t => t.semana));
-      if (semanaMaxima > 0 && semanaMaxima !== this.semanaSeleccionada) {
-        this.semanaSeleccionada = semanaMaxima;
+      const masReciente = [...this.tickets].sort((a, b) =>
+        (b.fechaAsignacion || '').localeCompare(a.fechaAsignacion || '')
+      )[0];
+      if (masReciente.semana !== this.semanaSeleccionada || masReciente.anioISO !== this.anioSeleccionado) {
+        this.semanaSeleccionada = masReciente.semana;
+        this.anioSeleccionado = masReciente.anioISO ?? this.anioSeleccionado;
         this.aplicarFiltros();
       }
     }
@@ -135,33 +156,74 @@ export class ListaTicketsComponent implements OnInit {
   }
 
   /**
-   * Retrocede una semana en el filtro y vuelve a aplicar los filtros.
-   * No permite ir por debajo de la semana 1.
+   * Retrocede una semana en el filtro (cruza al año anterior si corresponde)
+   * y vuelve a aplicar los filtros.
    */
   semanaAnterior() {
-    if (this.semanaSeleccionada > 1) {
-      this.semanaSeleccionada--;
-      this.aplicarFiltros();
-    }
+    this.cambiarSemana(-1);
   }
 
   /**
-   * Avanza una semana en el filtro y vuelve a aplicar los filtros.
-   * No permite ir más allá de la semana 53.
+   * Avanza una semana en el filtro (cruza al año siguiente si corresponde)
+   * y vuelve a aplicar los filtros.
    */
   semanaSiguiente() {
-    if (this.semanaSeleccionada < 53) {
-      this.semanaSeleccionada++;
-      this.aplicarFiltros();
-    }
+    this.cambiarSemana(1);
   }
 
   /**
-   * Reposiciona el filtro en la semana ISO actual y refresca el listado.
+   * Reposiciona el filtro en la semana+año ISO actual y refresca el listado.
    */
   irASemanaActual() {
     this.semanaSeleccionada = this.semanaActual;
+    this.anioSeleccionado = this.anioActual;
     this.aplicarFiltros();
+  }
+
+  /**
+   * Desplaza la semana+año seleccionados sumando/restando semanas completas
+   * sobre una fecha real, en vez de incrementar el número de semana a secas
+   * (que no puede cruzar el borde de fin/inicio de año correctamente). Mismo
+   * patrón que `TableroComponent.cambiarSemana`.
+   *
+   * @param desplazamiento - Número de semanas a sumar (positivo) o restar (negativo).
+   */
+  private cambiarSemana(desplazamiento: number) {
+    const fecha = this.obtenerFechaDesdeSemana(this.semanaSeleccionada, this.anioSeleccionado);
+    fecha.setDate(fecha.getDate() + (desplazamiento * 7));
+    const semanaIso = this.calcularSemanaYAnio(fecha);
+    this.semanaSeleccionada = semanaIso.week;
+    this.anioSeleccionado = semanaIso.year;
+    this.aplicarFiltros();
+  }
+
+  /**
+   * Calcula semana Y año ISO de una fecha (a diferencia de `calcularSemanaIso`,
+   * que solo devuelve el número de semana — usado en el resto del componente
+   * para autocompletar el formulario, donde el año no hace falta).
+   */
+  private calcularSemanaYAnio(fecha: Date): { week: number, year: number } {
+    return {
+      week: UtilidadesFecha.calcularSemanaISO(fecha),
+      year: UtilidadesFecha.calcularAnioISO(fecha)
+    };
+  }
+
+  /**
+   * Obtiene la fecha del lunes correspondiente al inicio de una semana ISO.
+   * Copiado de `TableroComponent` para mantener la navegación semana/año
+   * consistente entre ambas pantallas.
+   */
+  private obtenerFechaDesdeSemana(semana: number, anio: number): Date {
+    const fechaSimple = new Date(anio, 0, 1 + (semana - 1) * 7);
+    const diaDeLaSemana = fechaSimple.getDay();
+    const inicioSemanaIso = fechaSimple;
+    if (diaDeLaSemana <= 4) {
+      inicioSemanaIso.setDate(fechaSimple.getDate() - fechaSimple.getDay() + 1);
+    } else {
+      inicioSemanaIso.setDate(fechaSimple.getDate() + 8 - fechaSimple.getDay());
+    }
+    return inicioSemanaIso;
   }
 
   /**
@@ -258,8 +320,12 @@ export class ListaTicketsComponent implements OnInit {
       // Coincidencia por estado: si no hay filtro, todos pasan
       const coincideEstado = !this.filtroEstado || ticket.estado === this.filtroEstado;
 
-      // Coincidencia por semana ISO seleccionada
-      const coincideSemana = ticket.semana === this.semanaSeleccionada;
+      // Coincidencia por semana ISO seleccionada — DEBE incluir el año: sin
+      // esto, un ticket de otro año con el mismo número de semana (ej. semana
+      // 32 de 2025 y semana 32 de 2026) se contaba de más acá, mientras que
+      // el Tablero (que sí filtra por semana+año) mostraba el número correcto.
+      const coincideSemana = ticket.semana === this.semanaSeleccionada
+        && ticket.anioISO === this.anioSeleccionado;
 
       return coincideTexto && coincideEstado && coincideSemana;
     });
@@ -275,6 +341,7 @@ export class ListaTicketsComponent implements OnInit {
    * @param ticket - Ticket a editar. Si se omite, abre el modal en modo creación.
    */
   async abrirModal(ticket?: Ticket) {
+    this.mensajeErrorModal = '';
     if (this.sitios.length === 0 || this.areas.length === 0) {
       await this.servicioDialogo.alerta({
         titulo: 'Configuración Requerida',
@@ -369,6 +436,7 @@ export class ListaTicketsComponent implements OnInit {
   async guardarTicket() {
     if (this.formularioTicket.invalid) return;
     const valoresFormulario = this.formularioTicket.getRawValue();
+    this.mensajeErrorModal = '';
 
     if (this.modoEdicion && this.idEdicionActual) {
       await this.servicioTickets.actualizarTicket(this.idEdicionActual, valoresFormulario);
@@ -376,11 +444,11 @@ export class ListaTicketsComponent implements OnInit {
       // 🚨 Validar que el número de ticket no exista para este usuario
       const ticketExistente = await this.servicioTickets.obtenerTicketPorNumero(valoresFormulario.numeroTicket);
       if (ticketExistente) {
-        await this.servicioDialogo.alerta({
-          titulo: 'Ticket Duplicado',
-          mensaje: `Atención: Ya existe un ticket con el número ${valoresFormulario.numeroTicket}. Si deseas modificarlo, búscalo en la lista y selecciona editar.`,
-          tipo: 'danger'
-        });
+        // Mensaje inline dentro del propio modal, no un diálogo aparte: el
+        // <dialog> nativo del modal de ticket vive en el "top layer" del
+        // navegador y ningún modal de Bootstrap externo (ServicioDialogo)
+        // puede aparecer por encima de eso, sin importar su z-index.
+        this.mensajeErrorModal = `Ya existe un ticket con el número ${valoresFormulario.numeroTicket}. Si deseas modificarlo, búscalo en la lista y selecciona editar.`;
         return;
       }
       await this.servicioTickets.agregarTicket(valoresFormulario as Ticket);
@@ -471,17 +539,28 @@ export class ListaTicketsComponent implements OnInit {
    * @param id - Identificador del ticket a eliminar.
    */
   async eliminarTicket(id?: string) {
-    if (id) {
-      const confirmado = await this.servicioDialogo.confirmar({
-        titulo: 'Eliminar Ticket',
-        mensaje: '¿Estás seguro de eliminar este ticket?',
-        tipo: 'danger',
-        textoConfirmar: 'Eliminar'
+    if (!id) return;
+
+    const confirmado = await this.servicioDialogo.confirmar({
+      titulo: 'Eliminar Ticket',
+      mensaje: '¿Estás seguro de eliminar este ticket?',
+      tipo: 'danger',
+      textoConfirmar: 'Eliminar'
+    });
+    if (!confirmado) return;
+
+    try {
+      await this.servicioTickets.eliminarTicket(id);
+      await this.cargarTickets();
+    } catch (error) {
+      // Antes: sin try/catch, un fallo del DELETE (ej. sesión vencida a mitad
+      // de la operación) dejaba el ticket visualmente eliminado en el
+      // navegador sin que realmente se hubiera borrado en el servidor.
+      await this.servicioDialogo.alerta({
+        titulo: 'No se pudo eliminar',
+        mensaje: 'El ticket no pudo eliminarse. Verifica tu conexión o vuelve a intentarlo.',
+        tipo: 'danger'
       });
-      if (confirmado) {
-        await this.servicioTickets.eliminarTicket(id);
-        this.cargarTickets();
-      }
     }
   }
 
@@ -505,9 +584,9 @@ export class ListaTicketsComponent implements OnInit {
    * Exporta a Excel únicamente los tickets de la semana actualmente seleccionada.
    */
   async exportarSemanaActual() {
-    this.servicioDialogo.mostrarCargador(`Exportando tickets de la Semana ${this.semanaSeleccionada}...`);
+    this.servicioDialogo.mostrarCargador(`Exportando tickets de la Semana ${this.semanaSeleccionada} - ${this.anioSeleccionado}...`);
     try {
-      await this.servicioTickets.exportarAExcel(this.semanaSeleccionada);
+      await this.servicioTickets.exportarAExcel(this.semanaSeleccionada, this.anioSeleccionado);
       await new Promise(resolver => setTimeout(resolver, 800));
     } finally {
       this.servicioDialogo.ocultarCargador();
