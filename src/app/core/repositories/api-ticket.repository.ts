@@ -165,25 +165,29 @@ export class ApiTicketRepository implements ITicketRepository {
     await firstValueFrom(this.http.delete<void>(`${this.baseUrl}/${id}`));
   }
 
-  // ── Integridad referencial: sin endpoint dedicado, se resuelve client-side ──
+  // ── Integridad referencial ──────────────────────────────────────────────
+  // Antes descargaban el historial COMPLETO de tickets solo para contar
+  // cuántos tenían un sitio/área dado. El backend ya tiene la query
+  // (un solo CountAsync con índice) — GET /tickets/conteo.
+  //
+  // El rename en masa (actualizarNombreSitioEnMasa/AreaEnMasa) se retiró de
+  // acá: ahora es responsabilidad del backend, ejecutado atómicamente dentro
+  // de PUT /catalogos/sitios|areas/{id} junto con el cambio del catálogo
+  // (antes eran dos pasos separados desde el front — catálogo primero,
+  // N PATCH de tickets después — que podían quedar a mitad de camino si algo
+  // fallaba entre medio).
 
-  async contarTicketsPorSitio(idUsuario: string, nombreSitio: string): Promise<number> {
-    const tickets = await this.obtenerTickets(idUsuario);
-    return tickets.filter(t => t.sitio === nombreSitio).length;
+  async contarTicketsPorSitio(_idUsuario: string, nombreSitio: string): Promise<number> {
+    const { total } = await firstValueFrom(
+      this.http.get<{ total: number }>(`${this.baseUrl}/conteo`, { params: { sitio: nombreSitio } })
+    );
+    return total;
   }
 
-  async contarTicketsPorArea(idUsuario: string, nombreArea: string): Promise<number> {
-    const tickets = await this.obtenerTickets(idUsuario);
-    return tickets.filter(t => t.areaAfectada === nombreArea).length;
-  }
-
-  async actualizarNombreSitioEnMasa(idUsuario: string, nombreAnterior: string, nombreNuevo: string): Promise<void> {
-    const afectados = (await this.obtenerTickets(idUsuario)).filter(t => t.sitio === nombreAnterior);
-    await Promise.all(afectados.map(t => this.actualizarTicket(t.id!, { sitio: nombreNuevo })));
-  }
-
-  async actualizarNombreAreaEnMasa(idUsuario: string, nombreAnterior: string, nombreNuevo: string): Promise<void> {
-    const afectados = (await this.obtenerTickets(idUsuario)).filter(t => t.areaAfectada === nombreAnterior);
-    await Promise.all(afectados.map(t => this.actualizarTicket(t.id!, { areaAfectada: nombreNuevo })));
+  async contarTicketsPorArea(_idUsuario: string, nombreArea: string): Promise<number> {
+    const { total } = await firstValueFrom(
+      this.http.get<{ total: number }>(`${this.baseUrl}/conteo`, { params: { area: nombreArea } })
+    );
+    return total;
   }
 }
