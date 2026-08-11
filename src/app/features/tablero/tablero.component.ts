@@ -82,8 +82,12 @@ export class DashboardComponent implements OnInit {
    * @returns Promise<void> que se resuelve cuando todos los datos fueron cargados.
    */
   async cargarEstadisticas() {
-    this.estadisticas = await this.servicioTickets.obtenerEstadisticas(this.semanaSeleccionada, this.anioSeleccionado);
+    // Un solo fetch: antes se llamaba a obtenerEstadisticas() (que internamente
+    // descarga TODO el historial) y después, por separado, a obtenerTickets()
+    // otra vez para las gráficas — el historial completo viajaba dos veces por
+    // cada render y por cada clic de semana anterior/siguiente.
     const todosLosTickets = await this.servicioTickets.obtenerTickets();
+    this.estadisticas = this.servicioTickets.calcularEstadisticas(todosLosTickets, this.semanaSeleccionada, this.anioSeleccionado);
 
     // Determinar tickets recientes (orden descendente por creadoEn)
     this.ticketsRecientes = [...todosLosTickets]
