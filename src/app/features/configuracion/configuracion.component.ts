@@ -30,7 +30,7 @@ export class ComponenteConfiguracion implements OnInit {
   estaSincronizando = false;
 
   /**
- * @param servicioCatalogos - Servicio para gestionar sitios y áreas en Firestore.
+ * @param servicioCatalogos - Servicio para gestionar el catálogo de sitios y áreas.
  * @param servicioTickets   - Servicio de tickets para validar integridad referencial.
  * @param servicioDialogo   - Servicio para mostrar alertas, confirmaciones y prompts.
  */
@@ -46,7 +46,7 @@ export class ComponenteConfiguracion implements OnInit {
   }
 
   /**
-   * Carga o recarga los sitios y áreas desde Firestore.
+   * Carga o recarga los sitios y áreas del catálogo.
    * Se llama al iniciar y tras cada operación de escritura.
    */
   async cargarDatos(): Promise<void> {
@@ -159,8 +159,10 @@ export class ComponenteConfiguracion implements OnInit {
         textoConfirmar: 'Actualizar Todo'
       });
       if (confirmado) {
+        // El backend actualiza el sitio Y renombra los tickets asociados de
+        // forma atómica dentro de una sola transacción (PUT /catalogos/sitios/{id}) —
+        // ya no hace falta un segundo paso desde acá.
         await this.servicioCatalogos.actualizarSitio(sitio.id!, nombreNuevo.trim());
-        await this.servicioTickets.actualizarNombreSitioEnMasa(nombreAnterior, nombreNuevo.trim());
         this.cargarDatos();
       }
     }
@@ -247,8 +249,8 @@ export class ComponenteConfiguracion implements OnInit {
         textoConfirmar: 'Actualizar Todo'
       });
       if (confirmado) {
+        // Ver comentario de editarSitio: el backend hace el rename atómico.
         await this.servicioCatalogos.actualizarArea(area.id!, nombreNuevo.trim());
-        await this.servicioTickets.actualizarNombreAreaEnMasa(nombreAnterior, nombreNuevo.trim());
         this.cargarDatos();
       }
     }
