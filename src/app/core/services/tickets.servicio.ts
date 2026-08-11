@@ -116,14 +116,6 @@ export class ServicioTickets {
     return this.repo.contarTicketsPorArea(this.idUsuarioActual, nombreArea);
   }
 
-  async actualizarNombreSitioEnMasa(nombreAnterior: string, nombreNuevo: string): Promise<void> {
-    return this.repo.actualizarNombreSitioEnMasa(this.idUsuarioActual, nombreAnterior, nombreNuevo);
-  }
-
-  async actualizarNombreAreaEnMasa(nombreAnterior: string, nombreNuevo: string): Promise<void> {
-    return this.repo.actualizarNombreAreaEnMasa(this.idUsuarioActual, nombreAnterior, nombreNuevo);
-  }
-
   // ---------------------------------------------------------------------------
   // Lógica de Negocio — Pura, sin dependencias de almacenamiento
   // ---------------------------------------------------------------------------
@@ -149,6 +141,18 @@ export class ServicioTickets {
   /** Calcula estadísticas agregadas. Filtra por semana y año ISO si se proporcionan. */
   async obtenerEstadisticas(semana?: number, anio?: number): Promise<EstadisticasTicket> {
     const todos = await this.obtenerTickets();
+    return this.calcularEstadisticas(todos, semana, anio);
+  }
+
+  /**
+   * Calcula estadísticas agregadas sobre una lista de tickets YA CARGADA, sin
+   * hacer ningún fetch. Extraído de `obtenerEstadisticas()` para que un
+   * llamador que ya tiene el historial completo en memoria (como
+   * `TableroComponent.cargarEstadisticas()`, que también lo necesita para las
+   * gráficas) no tenga que descargarlo dos veces por cada render/cambio de
+   * semana — antes eso duplicaba el tráfico de red del tablero.
+   */
+  calcularEstadisticas(todos: Ticket[], semana?: number, anio?: number): EstadisticasTicket {
     let filtrados = todos;
 
     if (semana !== undefined && anio !== undefined) {
