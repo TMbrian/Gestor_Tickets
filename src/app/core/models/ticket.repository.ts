@@ -14,6 +14,7 @@ export abstract class ITicketRepository {
   abstract eliminarTicket(id: string): Promise<void>;
   abstract contarTicketsPorSitio(idUsuario: string, nombreSitio: string): Promise<number>;
   abstract contarTicketsPorArea(idUsuario: string, nombreArea: string): Promise<number>;
-  abstract actualizarNombreSitioEnMasa(idUsuario: string, nombreAnterior: string, nombreNuevo: string): Promise<void>;
-  abstract actualizarNombreAreaEnMasa(idUsuario: string, nombreAnterior: string, nombreNuevo: string): Promise<void>;
+  // El rename en masa de tickets al renombrar un sitio/área ya no vive acá:
+  // el backend lo hace atómicamente dentro de PUT /catalogos/sitios|areas/{id}
+  // (ver ApiTicketRepository). Antes eran dos pasos separados desde el front.
 }

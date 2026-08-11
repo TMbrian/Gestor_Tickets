@@ -60,12 +60,4 @@ export class MockTicketRepository implements ITicketRepository {
   async contarTicketsPorArea(nombreArea: string): Promise<number> {
     return this.tickets.filter(t => t.areaAfectada === nombreArea).length;
   }
-
-  async actualizarNombreSitioEnMasa(nombre: string, nuevo: string): Promise<void> {
-    this.tickets.forEach(t => { if (t.sitio === nombre) t.sitio = nuevo; });
-  }
-
-  async actualizarNombreAreaEnMasa(nombre: string, nuevo: string): Promise<void> {
-    this.tickets.forEach(t => { if (t.areaAfectada === nombre) t.areaAfectada = nuevo; });
-  }
 }
